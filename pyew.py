@@ -57,7 +57,7 @@ except ImportError:
 from pyew_core import CPyew
 
 PROGRAM="PYEW! A Python tool like *iew"
-VERSION=1.0
+VERSION=1.1.2
 
 def showHelp(pyew):
     print PROGRAM, VERSION

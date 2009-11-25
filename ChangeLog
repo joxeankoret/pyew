@@ -1,0 +1,12 @@
+Nov 24 2009 - Version 1.1.1 - Joxean Koret:
+
+	* Code analysis now works the way it's suppossed to work ;)
+
+Nov 23 2009 - Version 1.1.0 - Joxean Koret:
+
+	* Added support for ELF format.
+
+Nov 22 2009 - Version 1.0.0 - Joxean Koret:
+
+	* Firt public release.
+

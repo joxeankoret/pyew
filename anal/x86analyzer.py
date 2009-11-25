@@ -23,8 +23,22 @@ class CX86CodeAnalyzer:
         else:
             self.xrefs[afrom] = [ato]
 
+    def addFunction(self, offset, name=None):
+        if self.functions.has_key(offset):
+            return False
+        
+        self.queue.append(offset)
+        if not name:
+            name = "sub_%08x" % offset
+        
+        print "Adding function %s" % name
+        self.functions[offset] = name
+        
+        return True
+
     def doCodeAnalysis(self):
-        self.functions[self.pyew.ep] = "start"
+        #self.functions[self.pyew.ep] = "start"
+        self.addFunction(self.pyew.ep, "start")
         self.doAnalyzeFunction(self.pyew.ep)
         
         while 1:
@@ -32,6 +46,12 @@ class CX86CodeAnalyzer:
                 break
             
             pos = self.queue.pop()
+            if type(pos) is str:
+                try:
+                    pos = int(pos, 16)
+                except ValueError, TypeError:
+                    continue
+            
             self.doAnalyzeFunction(pos)
         
         self.pyew.names.update(self.functions)
@@ -51,15 +71,23 @@ class CX86CodeAnalyzer:
         if offset in self.checking:
             return
         
-        self.checking.append(offset)
+        if self.functions.has_key(offset) and len(self.functions) > 1:
+            return
         
-        lines = self.pyew.disasm(offset, self.pyew.processor, self.pyew.type, self.pyew.lines, self.pyew.maxsize)
+        self.checking.append(offset)
+        lines = self.pyew.disasm(offset, self.pyew.processor, self.pyew.type, self.pyew.lines, 16000)
         i = 0
         prev = ""
         info = ""
         
         for l in lines:
             i += 1
+            
+            if i > 1000:
+                break
+            else:
+                self.checking.append(l.offset)
+            
             mnem = str(l.mnemonic)
             
             if mnem == "CALL":
@@ -73,25 +101,19 @@ class CX86CodeAnalyzer:
                     #print "OPS",repr(ops)
                     ops = int(ops, 16)
                     #print "Adding to queue 0x%x" % ops
-                    self.queue.append(ops)
                     self.addXref(l.offset, ops)
-                    self.functions[ops] = "sub_%08x" % ops
+                    self.addFunction(ops)
                 except ValueError, TypeError:
                     pass
             elif mnem == "JMP" and i == 1:
-                """ In example, it can be the following:
-                    
-                        JMP msvcrt.dll!__getmainargs
-                    
-                    So, we create a new name with name:
-                    
-                        j_msvcrt.dll!__getmainargs
-                """
                 ops = self.pyew.resolveName(l.operands)
                 self.addXref(l.offset, ops)
                 
                 if self.pyew.names.has_key(ops) or True:
-                    self.functions[offset] = "j_" + ops
+                    try:
+                        self.addFunction(ops, "j_" % ops)
+                    except:
+                        continue
                 else:
                     self.doAnalyzeFunction(ops)
                 self.analyzed.append(offset)
@@ -107,8 +129,15 @@ class CX86CodeAnalyzer:
                 self.analyzed.append(new_offset)
             elif mnem.startswith("RET"):
                 if prev == "PUSH":
+                    try:
+                        info = int(str(info), 16)
+                    except ValueError, TypeError:
+                        continue
+                    
                     self.addXref(l.offset, info)
                     self.doAnalyzeFunction(info)
+                    self.addFunction(info, "ret_%08x" % info)
+                    return
             elif mnem.startswith("RET"):
                 return
             else:

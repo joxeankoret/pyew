@@ -30,6 +30,13 @@ from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_ne
 from config import PLUGINS_PATH
 
 try:
+    import psyco
+    psyco.log()
+    psyco.full()
+except ImportError:
+    pass
+
+try:
     import readline
     
     histfile = os.path.join(os.environ["HOME"], ".pyew")
@@ -57,10 +64,11 @@ except ImportError:
 from pyew_core import CPyew
 
 PROGRAM="PYEW! A Python tool like *iew"
-VERSION=1.1.2
+VERSION=0x01010200
+HUMAN_VERSION="1.1.2.0"
 
 def showHelp(pyew):
-    print PROGRAM, VERSION
+    print PROGRAM, VERSION, "(%s)" % HUMAN_VERSION
     print
     print "Commands:"
     print
@@ -70,6 +78,7 @@ def showHelp(pyew):
     print "g/G                               Goto BOF (g) or EOF (G)"
     print "+/-                               Go forward/backward one block (specified by pyew.bsize)"
     print "c/d/dis/pd                        Show disassembly"
+    print "a                                 Do code analysis"
     print "r/repr                            Show string represantation"
     print "p                                 Print the buffer"
     print "/x expr                           Search hexadecimal string"
@@ -166,6 +175,8 @@ def main(filename):
             
             if cmd.lower() in ["exit", "quit", "q"]:
                 break
+            elif cmd.lower() in ["a", "anal"]:
+                pyew.findFunctions(pyew.processor)
             elif cmd.lower() in ["x", "dump", "hexdump"]:
                 print pyew.hexdump(pyew.buf, pyew.hexcolumns, baseoffset=pyew.offset)
             elif cmd.lower().split(" ")[0] in ["s", "seek"]:
@@ -300,7 +311,7 @@ def mainBatch(directory):
     pass
 
 def usage():
-    print "%s Version 0x%08x" % (PROGRAM, VERSION)
+    print "%s Version 0x%08x (%s)" % (PROGRAM, VERSION, HUMAN_VERSION)
     print
     print "Usage:", sys.argv[0], "<filename>"
 

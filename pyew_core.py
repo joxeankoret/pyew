@@ -38,7 +38,7 @@ try:
     hasPefile = True
 except ImportError:
     hasPefile = False
-    
+
 try:
     from Elf import Elf
     hasElf = True
@@ -98,7 +98,7 @@ class CStrings:
 
 class CPyew:
     batch = False
-    codeanalysis = True
+    codeanalysis = False
     offset = 0
     previousoffset = []
     lastasmoffset = 0
@@ -133,6 +133,7 @@ class CPyew:
             self.f.close()
 
     def log(self, msg=None, *args):
+        """ Show a message if not in batch mode """
         if not self.batch:
             if msg and args:
                 print msg, " ".join(map(str, args))
@@ -142,13 +143,19 @@ class CPyew:
                 print
 
     def NextHead(self, offset):
+        """ Retrieve the next assembly line offset/address """
         obj = self.disasm(offset, self.processor, self.type, 1)
         return offset + obj.size
 
     def GetMnem(self, offset):
+        """ Get the mnemonic correspondient to the disassembly line at the given
+        offset """
         return self.GetMnems(offset, num)
 
     def GetMnems(self, offset, num):
+        """ Get a list of 'num' mnemonics correspondient to the disassembly
+        lines at the given offset """
+        
         obj = self.disasm(offset, self.processor, self.type, num)
         ret = []
         for x in obj:
@@ -157,9 +164,11 @@ class CPyew:
         return ret
 
     def getByte(self, offset):
+        """ Get a byte at the given offset """
         return self.getBytes(offset, 1)
     
     def getBytes(self, offset, num):
+        """ Get a 'num' bytes from the given offset """
         moffset = self.offset
         self.f.seek(offset)
         buf = self.f.read(num)
@@ -167,6 +176,7 @@ class CPyew:
         return buf
 
     def showSettings(self):
+        """ Print out the current Pyew's settings """
         for x in dir(self):
             if x.startswith("_") or x in ["pe", "buf"] or operator.isCallable(eval("self." + x)) \
                or x in ["plugins", "names", "imports", "exports", "functions_address", \
@@ -181,6 +191,7 @@ class CPyew:
             self.log(x.ljust(8), self.plugins[x].__doc__)
 
     def loadFile(self, filename, mode="rb"):
+        """ Load a file into Pyew """
         self.filename = filename
         self.mode = mode
         
@@ -245,6 +256,7 @@ class CPyew:
         self.processor="java"
 
     def createIntelFunctionsByPrologs(self):
+        """ Search typical IA32 and AMD64 function prologs and mark them as functions"""
         total = 0
         
         if self.type == 32:
@@ -271,6 +283,7 @@ class CPyew:
                     self.names[hint.keys()[0]] = "sub_%08x" % hint.keys()[0]
 
     def resolveName(self, ops):
+        """ Retrieve the name associated to one offset """
         orig = str(ops)
         ops = str(ops)
         if ops.startswith("["):
@@ -287,6 +300,7 @@ class CPyew:
             return orig
 
     def findIntelFunctions(self):
+        """ Perform code analysis by recursively traversing all possible code paths """
         from anal.x86analyzer import CX86CodeAnalyzer
         
         anal = CX86CodeAnalyzer(self, self.type)
@@ -294,9 +308,10 @@ class CPyew:
         #self.createIntelFunctionsByPrologs()
 
     def findFunctions(self, proc):
+        """ Find all possible functions by doing code analysis """
         if proc == "intel":
             t = time.time()
-            self.log("Code Analysis ...")
+            self.log("Analyzing code ...")
             self.findIntelFunctions()
             self.log("Total time %f second(s)" % (time.time()-t))
 
@@ -412,6 +427,7 @@ class CPyew:
             #raise
 
     def loadPlugins(self):
+        """ Load the available plugins """
         path = PLUGINS_PATH
         sys.path.append(path)
         
@@ -431,6 +447,7 @@ class CPyew:
                 self.plugins.update(m.functions)
 
     def seek(self, pos):
+        """ Seek to the specified offset """
         if pos > self.maxsize:
             self.log("End of file reached")
             self.offset = self.maxsize
@@ -460,6 +477,7 @@ class CPyew:
         return result
 
     def getDisassembleObject(self, obj):
+        """ Get a disassembly object from a disassembly list """
         if type(obj) is tuple:
             ret = CDisObj()
             ret.offset = obj[0]
@@ -482,6 +500,8 @@ class CPyew:
             return obj
     
     def disasm(self, offset=0, processor="intel", type=32, lines=1, bsize=512):
+        """ Disassemble at offset the number of lines specified and return a list
+        of disassembly objects """
         if processor == "intel":
             if type == 32:
                 decode = Decode32Bits
@@ -509,7 +529,7 @@ class CPyew:
             return ret
 
     def disassemble(self, buf, processor="intel", type=32, lines=40, bsize=512, baseoffset=0):
-        """ Disassemble a given buffer using Distorm """
+        """ Disassemble a given buffer using Distorm and show the output in Pyew's console """
         if processor == "intel":
             if type == 32:
                 decode = Decode32Bits
@@ -592,6 +612,7 @@ class CPyew:
         return ret
 
     def strings(self, buf, doprint=True, offset=0):
+        """ Retrieve all strings inside the file """
         strs = CStrings(buf)
         ret = strs.getStrings()
         
@@ -606,6 +627,7 @@ class CPyew:
         return hints
 
     def extract(self, buf, strre, doprint=True, offset=0):
+        """ Perform a regular expression search """
         obj = re.compile(strre, re.IGNORECASE | re.MULTILINE)
         ret = obj.findall(buf)
         
@@ -620,6 +642,7 @@ class CPyew:
         return hints
 
     def dosearch(self, f, mtype, search, cols=32, doprint=True, offset=0):
+        """ Perform a search inside the file """
         if (search == None or search == "") and mtype not in ["s"]:
             return []
         
@@ -680,9 +703,11 @@ class CPyew:
         return hints
 
     def getBuffer(self):
+        """ Retrieve the complete file's content """
         moffset = self.offset
         self.f.seek(0)
         buf = self.f.read()
         self.seek(moffset)
         
         return buf
+

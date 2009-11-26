@@ -99,6 +99,8 @@ class CStrings:
 class CPyew:
     debug = False
     batch = False
+    antidebug = []
+    virtual = False
     codeanalysis = True
     offset = 0
     previousoffset = []
@@ -167,11 +169,32 @@ class CPyew:
         self.seek(moffset)
         return buf
 
+    def getVirtualAddressFromOffset(self, offset):
+        ret = None
+        
+        if self.format == "PE":
+            try:
+                ret = self.pe.OPTIONAL_HEADER.ImageBase + self.pe.get_rva_from_offset(self.offset)
+            except:
+                pass
+        
+        return ret
+
+    def getOffsetFromVirtualAddress(self, va):
+        if self.format == "PE":
+            try:
+                ret = self.pe.get_offset_from_rva(self.offset)
+            except:
+                print sys.exc_info()[1]
+                return None
+        
+        return None
+
     def showSettings(self):
         for x in dir(self):
-            if x.startswith("_") or x in ["pe", "buf"] or operator.isCallable(eval("self." + x)) \
+            if x.startswith("_") or x in ["pe", "elf", "buf"] or operator.isCallable(eval("self." + x)) \
                or x in ["plugins", "names", "imports", "exports", "functions_address", \
-                        "names", "functions", "xrefs"]:
+                        "names", "functions", "xrefs_from", "xrefs_to", "antidebug"]:
                 continue
             else:
                 self.log("pyew." + x.ljust(16) + ":", eval("self." + x))
@@ -337,6 +360,10 @@ class CPyew:
             for x in self.elf.relocs:
                 self.names[x.r_offset] = x.name
                 self.imports[x.r_offset] = x.name
+            
+            for x in self.elf.symbols:
+                if x.name != "" and x.st_value != 0:
+                    self.names[name] = x.st_value
         except:
             pass
         
@@ -383,6 +410,8 @@ class CPyew:
             self.log("PE Information")
             self.log()
             
+            self.virtual = True
+            
             if self.pe.FILE_HEADER.Machine == 0x14C: # IMAGE_FILE_MACHINE_I386
                 self.processor="intel"
                 self.type = 32
@@ -396,6 +425,7 @@ class CPyew:
                 self.log("  ", section.Name, hex(section.VirtualAddress), hex(section.Misc_VirtualSize), section.SizeOfRawData)
             self.log()
             x = self.pe.OPTIONAL_HEADER.AddressOfEntryPoint
+            
             for s in self.pe.sections:
                 if x >= s.VirtualAddress and x <= s.VirtualAddress + s.SizeOfRawData:
                     break
@@ -404,6 +434,7 @@ class CPyew:
             x += s.PointerToRawData
             ep = x
             self.log("Entry Point at 0x%x" % x)
+            self.log("Virtual Address is 0x%0x" % (self.pe.OPTIONAL_HEADER.ImageBase + self.pe.get_rva_from_offset(x)))
             self.offset = x
             self.ep = x
             
@@ -558,7 +589,7 @@ class CPyew:
                             if func != "":
                                 ops = func
                             else:
-                                ops = ops
+                                ops = "0x%08x" % ops
                             
                             comment = ""
                         

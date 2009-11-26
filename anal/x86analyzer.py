@@ -8,21 +8,28 @@ class CX86CodeAnalyzer:
     type = "PE"
     functions = {}
     functions_address = {}
-    xrefs = {}
+    xrefs_to = {}
+    xrefs_from = {}
     queue = []
     analyzed = []
     checking = []
     tocheck = []
+    antidebug = []
 
     def __init__(self, pyew, type="PE"):
         self.pyew = pyew
         self.pe = type
 
     def addXref(self, afrom , ato):
-        if self.xrefs.has_key(ato):
-            self.xrefs[ato].append(afrom)
+        if self.xrefs_to.has_key(ato):
+            self.xrefs_to[ato].append(afrom)
         else:
-            self.xrefs[ato] = [afrom]
+            self.xrefs_to[ato] = [afrom]
+        
+        if self.xrefs_from.has_key(afrom):
+            self.xrefs_from[afrom].append(ato)
+        else:
+            self.xrefs_from[afrom] = [ato]
 
     def addFunction(self, offset, name=None, tocheck=None):
         if self.functions.has_key(offset):
@@ -66,10 +73,12 @@ class CX86CodeAnalyzer:
             
             self.doAnalyzeFunction(pos)
         
+        self.pyew.antidebug = self.antidebug
         self.pyew.names.update(self.functions)
         self.pyew.functions = self.functions
         self.pyew.functions_address = self.functions_address
-        self.pyew.xrefs = self.xrefs
+        self.pyew.xrefs_to = self.xrefs_to
+        self.pyew.xrefs_from = self.xrefs_from
         self.pyew.seek(0)
 
     def doAnalyzeFunction(self, offset):
@@ -104,7 +113,7 @@ class CX86CodeAnalyzer:
         
         for l in lines:
             i += 1
-            if i >= 1000:
+            if i >= 1000: # Just in case
                 break
             self.checking.append(l.offset)
             
@@ -155,21 +164,27 @@ class CX86CodeAnalyzer:
                 if new_offset in self.tocheck:
                     self.tocheck.remove(new_offset)
             elif mnem.startswith("RET"):
-                """if prev == "PUSH":
+                if prev == "PUSH":
                     try:
                         info = int(str(info), 16)
                     except ValueError, TypeError:
                         continue
+                    
+                    if info >= self.pyew.maxsize or info <= 0:
+                        continue
+                    
                     self.addXref(l.offset, info)
                     self.doAnalyzeFunction(info)
-                    #print l.offset, l
-                    self.addFunction(info, "ret_%08x" % info, tocheck=True)"""
+                    self.addFunction(info, "ret_%08x" % info, tocheck=True)
                 break
+            elif mnem.startswith("INT") or mnem.startswith("UD"):
+                self.antidebug.append((l.offset, str(l)))
             else:
                 prev = mnem
                 info = str(l.operands)
         
         name = self.pyew.resolveName(offset)
+        # Isn't a f*cking basic block?
         self.functions_address[name] = [offset, l.offset + offset]
         self.checking.remove(offset)
         self.analyzed.append(offset)

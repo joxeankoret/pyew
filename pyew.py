@@ -134,7 +134,16 @@ def main(filename):
             else:
                 pyew.previousoffset.append(pyew.offset)
             
-            cmd = raw_input("[0x%08x]> " % pyew.offset)
+            va = None
+            if pyew.virtual:
+                va = pyew.getVirtualAddressFromOffset(pyew.offset)
+            
+            if va:
+                prompt = "[0x%08x:0x%08x]> " % (pyew.offset, va)
+            else:
+                prompt = "[0x%08x]> " % pyew.offset
+            
+            cmd = raw_input(prompt)
             
             if cmd in ["", "b"] and (last_cmd in ["b", "x", "c", "d", "dump", "hexdump", "dis", "pd", "p", "r", "buf"] or last_cmd.isdigit()):
                 if cmd == "b":
@@ -157,9 +166,11 @@ def main(filename):
                     tmp = pyew.previousoffset[len(pyew.previousoffset)-1]
                     pyew.seek(tmp)
                     continue
-                elif last_cmd in ["c", "d", "pd"]:
+                elif last_cmd in ["c", "d", "pd"] or last_cmd.isdigit():
                     pyew.offset = pyew.lastasmoffset
                     pyew.seek(pyew.offset)
+                    if last_cmd.isdigit():
+                        last_cmd = "c"
                 else:
                     pyew.offset = pyew.offset+pyew.bsize
                     pyew.seek(pyew.offset + pyew.bsize)

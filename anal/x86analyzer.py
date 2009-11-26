@@ -104,7 +104,7 @@ class CX86CodeAnalyzer:
         
         for l in lines:
             i += 1
-            if i >= 100:
+            if i >= 1000:
                 break
             self.checking.append(l.offset)
             

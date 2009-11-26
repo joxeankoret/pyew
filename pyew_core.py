@@ -397,7 +397,7 @@ class CPyew:
             self.log()
             x = self.pe.OPTIONAL_HEADER.AddressOfEntryPoint
             for s in self.pe.sections:
-                if s.VirtualAddress <= x:
+                if x >= s.VirtualAddress and x <= s.VirtualAddress + s.SizeOfRawData:
                     break
             
             x = x - s.VirtualAddress

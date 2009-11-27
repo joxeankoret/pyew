@@ -183,7 +183,7 @@ class CPyew:
     def getOffsetFromVirtualAddress(self, va):
         if self.format == "PE":
             try:
-                ret = self.pe.get_offset_from_rva(self.offset)
+                ret = self.pe.get_offset_from_rva(va)
             except:
                 print sys.exc_info()[1]
                 return None
@@ -376,20 +376,24 @@ class CPyew:
             for entry in pe.DIRECTORY_ENTRY_IMPORT:
                 for imp in entry.imports:
                     self.names[imp.address] = entry.dll + "!" + imp.name
-                    #self.names[imp.address] = imp.name
                     self.imports[imp.address] = entry.dll + "!" + imp.name
         except:
             pass
             
         try:
+            addr = None
+            
             for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:
+                addr = self.getOffsetFromVirtualAddress(exp.address)
+                
                 if exp.name and exp.name != "":
-                    self.names[exp.address] = exp.name
-                    self.exports[exp.address] = exp.name
+                    self.names[addr] = exp.name
+                    self.exports[addr] = exp.name
                 else:
-                    self.names[exp.address] = expordinal
-                    self.exports[exp.address] = "#" + str(expordinal)
+                    self.names[addr] = expordinal
+                    self.exports[addr] = "#" + str(expordinal)
         except:
+            raise
             pass
         
         if self.codeanalysis:
@@ -593,7 +597,6 @@ class CPyew:
                                 ops = "0x%08x" % ops
                             
                             comment = ""
-                        
                     except:
                         ops = str(i.operands)
                 elif str(i.operands).find("[") > -1:
@@ -633,7 +636,8 @@ class CPyew:
                 if str(i.mnemonic).lower().startswith("j") or str(i.mnemonic).lower() == "ret":
                     pos += 1
                     ret += "0x%08x " % i.offset + "-"*70 + "\n"
-                if pos == lines:
+                
+                if pos >= lines:
                     break
             
             if i:

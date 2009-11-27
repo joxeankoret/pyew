@@ -442,7 +442,8 @@ class CPyew:
             self.log()
         except:
             self.log("PEFILE:", sys.exc_info()[1])
-            raise
+            if self.debug:
+                raise
 
     def loadPlugins(self):
         path = PLUGINS_PATH
@@ -595,13 +596,43 @@ class CPyew:
                         
                     except:
                         ops = str(i.operands)
+                elif str(i.operands).find("[") > -1:
+                    tmp = re.findall("\[(0x[0-9A-F]+)\]", str(i.operands), re.IGNORECASE)
+                    if len(tmp) > 0:
+                        tmp = int(tmp[0], 16)
+                        if self.names.has_key(tmp):
+                            
+                            if self.imports.has_key(tmp):
+                                comment = "\t; %s" % self.names[tmp]
+                            else:
+                                index += 1
+                                comment = "\t; %d %s" % (index, self.names[tmp])
                 else:
                     if self.names.has_key(i.offset):
-                        comment = "\t; Function %s" % self.names[i.offset]
+                        mxrefs = []
+                        if self.xrefs_to.has_key(i.offset):
+                            tmpidx = 0
+                            for tmp in self.xrefs_to[i.offset]:
+                                tmpidx += 1
+                                mxrefs.append("0x%08x" % tmp)
+                                
+                                if tmpidx == 3:
+                                    mxrefs.append("...")
+                                    break
+                        
+                        pos += 1
+                        if len(mxrefs) > 0:
+                            ret += "0x%08x ; FUNCTION %s\t XREFS %s\n" % (i.offset, self.names[i.offset], ", ".join(mxrefs))
+                        else:
+                            ret += "0x%08x ; FUNCTION %s\n" % (i.offset, self.names[i.offset])
+                        #comment = "\t; Function %s" % self.names[i.offset]
                     else:
                         comment = ""
                 
                 ret += "0x%08x (%02x) %-20s %s%s\n" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
+                if str(i.mnemonic).lower().startswith("j") or str(i.mnemonic).lower() == "ret":
+                    pos += 1
+                    ret += "0x%08x " % i.offset + "-"*70 + "\n"
                 if pos == lines:
                     break
             
@@ -707,7 +738,8 @@ class CPyew:
                 self.log("Aborted")
             except:
                 self.log("Error:", sys.exc_info()[1])
-                #raise
+                if self.debug:
+                    raise
             
         f.seek(oldpos)
         return hints

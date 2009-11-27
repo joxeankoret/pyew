@@ -115,6 +115,11 @@ def showHelp(pyew):
 def main(filename):
 
     pyew = CPyew()
+    if os.getenv("PYEW_DEBUG"):
+        pyew.debug=True
+    else:
+        pyew.debug = False
+    
     pyew.loadFile(filename, "rb")
 
     pyew.offset = 0
@@ -316,7 +321,8 @@ def main(filename):
                         pprint.pprint(x)
         except:
             print "Error:", sys.exc_info()[1]
-            #raise
+            if pyew.debug:
+                raise
 
 def mainBatch(directory):
     pass

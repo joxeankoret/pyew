@@ -182,7 +182,7 @@ class CX86CodeAnalyzer:
             else:
                 prev = mnem
                 info = str(l.operands)
-        
+            
         name = self.pyew.resolveName(offset)
         # Isn't a f*cking basic block?
         self.functions_address[name] = [offset, l.offset + offset]

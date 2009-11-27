@@ -195,21 +195,22 @@ def main(filename):
                 pyew.findFunctions(pyew.processor)
             elif cmd.lower() in ["x", "dump", "hexdump"]:
                 print pyew.hexdump(pyew.buf, pyew.hexcolumns, baseoffset=pyew.offset)
-            elif cmd.lower().split(" ")[0] in ["s", "seek"]:
-                data = cmd.lower().split(" ")
+            elif cmd.split(" ")[0] in ["s", "seek"]:
+                data = cmd.split(" ")
                 if len(data) > 1:
                     if data[1].lower() in ["ep", "entrypoint"]:
                         if pyew.ep:
                             pyew.offset = pyew.ep
                     else:
                         pyew.names.has_key(data[1].lower())
+                        
                         if data[1].lower()[0] in ["+", "-"]:
                             pyew.offset += int(data[1])
                         elif data[1].lower().startswith("0x"):
                             pyew.offset = int(data[1], 16)
-                        elif data[1].lower() in pyew.names.values():
+                        elif data[1] in pyew.names.values():
                             for x in pyew.names:
-                                if pyew.names[x] == data[1].lower():
+                                if pyew.names[x] == data[1]:
                                     pyew.offset = x
                                     break
                         else:

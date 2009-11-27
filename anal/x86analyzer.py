@@ -20,6 +20,37 @@ class CX86CodeAnalyzer:
         self.pyew = pyew
         self.pe = type
 
+    def doCodeAnalysis(self):
+        self.addFunction(self.pyew.ep, "start")
+        self.doAnalyzeFunction(self.pyew.ep)
+        
+        for func in self.pyew.exports:
+            self.addFunction(func, self.pyew.exports[func])
+            self.doAnalyzeFunction
+        
+        while 1:
+            if len(self.queue) == 0:
+                if self.pyew.debug:
+                    print "NO more elements in queue"
+                break
+            
+            pos = self.queue.pop()
+            if type(pos) is str:
+                try:
+                    pos = int(pos, 16)
+                except ValueError, TypeError:
+                    continue
+            
+            self.doAnalyzeFunction(pos)
+        
+        self.pyew.antidebug = self.antidebug
+        self.pyew.names.update(self.functions)
+        self.pyew.functions = self.functions
+        self.pyew.functions_address = self.functions_address
+        self.pyew.xrefs_to = self.xrefs_to
+        self.pyew.xrefs_from = self.xrefs_from
+        self.pyew.seek(0)
+
     def addXref(self, afrom , ato):
         if self.xrefs_to.has_key(ato):
             self.xrefs_to[ato].append(afrom)
@@ -53,33 +84,6 @@ class CX86CodeAnalyzer:
         self.functions[offset] = name
         
         return True
-
-    def doCodeAnalysis(self):
-        self.addFunction(self.pyew.ep, "start")
-        self.doAnalyzeFunction(self.pyew.ep)
-        
-        while 1:
-            if len(self.queue) == 0:
-                if self.pyew.debug:
-                    print "NO more elements in queue"
-                break
-            
-            pos = self.queue.pop()
-            if type(pos) is str:
-                try:
-                    pos = int(pos, 16)
-                except ValueError, TypeError:
-                    continue
-            
-            self.doAnalyzeFunction(pos)
-        
-        self.pyew.antidebug = self.antidebug
-        self.pyew.names.update(self.functions)
-        self.pyew.functions = self.functions
-        self.pyew.functions_address = self.functions_address
-        self.pyew.xrefs_to = self.xrefs_to
-        self.pyew.xrefs_from = self.xrefs_from
-        self.pyew.seek(0)
 
     def doAnalyzeFunction(self, offset):
         if offset in self.analyzed:

@@ -384,7 +384,11 @@ class CPyew:
             addr = None
             
             for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:
-                addr = self.getOffsetFromVirtualAddress(exp.address)
+                
+                try:
+                    addr = self.pe.get_offset_from_rva(exp.address)
+                except:
+                    addr = exp.address
                 
                 if exp.name and exp.name != "":
                     self.names[addr] = exp.name

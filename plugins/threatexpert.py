@@ -28,7 +28,7 @@ def threatExpertSearch(pyew):
 
     baseurl = "http://www.threatexpert.com/report.aspx?md5="
     buf = pyew.getBuffer()
-    url = baseurl + md5.md5(buf).hexdigest()
+    url = baseurl + md5(buf).hexdigest()
 
     webbrowser.open(url)
 

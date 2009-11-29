@@ -397,7 +397,6 @@ class CPyew:
                     self.names[addr] = expordinal
                     self.exports[addr] = "#" + str(expordinal)
         except:
-            raise
             pass
         
         if self.codeanalysis:
@@ -450,8 +449,6 @@ class CPyew:
             self.log()
         except:
             self.log("PEFILE:", sys.exc_info()[1])
-            if self.debug:
-                raise
 
     def loadPlugins(self):
         path = PLUGINS_PATH
@@ -621,7 +618,10 @@ class CPyew:
                             tmpidx = 0
                             for tmp in self.xrefs_to[i.offset]:
                                 tmpidx += 1
-                                mxrefs.append("0x%08x" % tmp)
+                                if self.names.has_key(tmp):
+                                    mxrefs.append(self.names[tmp])
+                                else:
+                                    mxrefs.append("sub_%08x" % tmp)
                                 
                                 if tmpidx == 3:
                                     mxrefs.append("...")
@@ -746,8 +746,7 @@ class CPyew:
                 self.log("Aborted")
             except:
                 self.log("Error:", sys.exc_info()[1])
-                if self.debug:
-                    raise
+                raise
             
         f.seek(oldpos)
         return hints

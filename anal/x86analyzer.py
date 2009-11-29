@@ -26,7 +26,7 @@ class CX86CodeAnalyzer:
         
         for func in self.pyew.exports:
             self.addFunction(func, self.pyew.exports[func])
-            self.doAnalyzeFunction
+            self.doAnalyzeFunction(func)
         
         while 1:
             if len(self.queue) == 0:
@@ -117,8 +117,8 @@ class CX86CodeAnalyzer:
         
         for l in lines:
             i += 1
-            if i >= 1000: # Just in case
-                break
+            """if i >= 1000: # Just in case
+                break"""
             self.checking.append(l.offset)
             
             mnem = str(l.mnemonic)
@@ -181,7 +181,7 @@ class CX86CodeAnalyzer:
                     self.doAnalyzeFunction(info)
                     self.addFunction(info, "ret_%08x" % info, tocheck=True)
                 break
-            elif mnem.startswith("INT") or mnem.startswith("UD"):
+            elif mnem.startswith("INT") or mnem.startswith("UD") or mnem == "RDTSC":
                 self.antidebug.append((l.offset, str(l)))
             else:
                 prev = mnem

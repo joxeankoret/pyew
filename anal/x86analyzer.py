@@ -1,5 +1,25 @@
 #!/usr/bin/env python
 
+"""
+This file is part of Pyew
+
+Copyright (C) 2009, Joxean Koret
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+
 import sys
 
 class CX86CodeAnalyzer:
@@ -15,12 +35,31 @@ class CX86CodeAnalyzer:
     checking = []
     tocheck = []
     antidebug = []
+    
+    last_msg_size = 0
 
     def __init__(self, pyew, type="PE"):
         self.pyew = pyew
         self.pe = type
 
     def doCodeAnalysis(self):
+        try:
+            self.mDoCodeAnalysis()
+        except KeyboardInterrupt:
+            pass
+        
+        self.pyew.antidebug = self.antidebug
+        self.pyew.names.update(self.functions)
+        self.pyew.functions = self.functions
+        self.pyew.functions_address = self.functions_address
+        self.pyew.xrefs_to = self.xrefs_to
+        self.pyew.xrefs_from = self.xrefs_from
+        self.pyew.seek(0)
+        
+        if not self.pyew.batch:
+            sys.stdout.write("\b"*100 + " "*100)
+
+    def mDoCodeAnalysis(self):
         self.addFunction(self.pyew.ep, "start")
         self.doAnalyzeFunction(self.pyew.ep)
         
@@ -42,14 +81,6 @@ class CX86CodeAnalyzer:
                     continue
             
             self.doAnalyzeFunction(pos)
-        
-        self.pyew.antidebug = self.antidebug
-        self.pyew.names.update(self.functions)
-        self.pyew.functions = self.functions
-        self.pyew.functions_address = self.functions_address
-        self.pyew.xrefs_to = self.xrefs_to
-        self.pyew.xrefs_from = self.xrefs_from
-        self.pyew.seek(0)
 
     def addXref(self, afrom , ato):
         if self.xrefs_to.has_key(ato):
@@ -108,17 +139,35 @@ class CX86CodeAnalyzer:
         elif offset in self.tocheck:
             self.tocheck.remove(offset)
         
+        if self.last_msg_size > 0:
+            pass
+        else:
+            msg = "Analyzing address 0x%08x" % offset
+            print "\b"*self.last_msg_size + " "*self.last_msg_size + "\b"*self.last_msg_size
+            self.last_msg_size = len(msg)
+            sys.stdout.write(msg)
+            sys.stdout.flush()
+        
         self.checking.append(offset)
         self.analyzed.append(offset)
-        lines = self.pyew.disasm(offset, self.pyew.processor, self.pyew.type, self.pyew.lines, 16000)
+        lines = self.pyew.disasm(offset, self.pyew.processor, self.pyew.type, 1024, 16000)
         i = 0
         prev = ""
         info = ""
         
         for l in lines:
             i += 1
-            """if i >= 1000: # Just in case
-                break"""
+            """
+            if i >= 1000: # Just in case
+                break
+            """
+            if l.offset in self.analyzed:
+                break
+            
+            if not self.pyew.batch:
+                sys.stdout.write("\b"*10 + "0x%08x" % l.offset)
+            
+            self.analyzed.append(l.offset)
             self.checking.append(l.offset)
             
             mnem = str(l.mnemonic)
@@ -181,12 +230,13 @@ class CX86CodeAnalyzer:
                     self.doAnalyzeFunction(info)
                     self.addFunction(info, "ret_%08x" % info, tocheck=True)
                 break
-            elif mnem.startswith("INT") or mnem.startswith("UD") or mnem == "RDTSC":
+            elif mnem.startswith("INT") or mnem.startswith("UD") or \
+                 mnem.startswith("RDTSC"):
                 self.antidebug.append((l.offset, str(l)))
             else:
                 prev = mnem
                 info = str(l.operands)
-            
+        
         name = self.pyew.resolveName(offset)
         # Isn't a f*cking basic block?
         self.functions_address[name] = [offset, l.offset + offset]

@@ -2,7 +2,7 @@
 # -*- coding: latin-1 -*-
 
 """
-Pyew! A Python Tool like the populars *iew
+Pyew! A Python Tool like the populars radare and *iew
 
 Copyright (C) 2009, Joxean Koret
 

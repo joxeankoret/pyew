@@ -63,7 +63,7 @@ except ImportError:
 
 from pyew_core import CPyew
 
-PROGRAM="PYEW! A Python tool like *iew"
+PROGRAM="PYEW! A Python tool like radare or *iew"
 VERSION=0x01010200
 HUMAN_VERSION="1.1.2.0"
 
@@ -79,8 +79,10 @@ def showHelp(pyew):
     print "+/-                               Go forward/backward one block (specified by pyew.bsize)"
     print "c/d/dis/pd                        Show disassembly"
     print "a                                 Do code analysis"
-    print "r/repr                            Show string represantation"
+    print "r/repr                            Show string representation"
     print "p                                 Print the buffer"
+    print "buf                               Print as a python buffer"
+    print "byte                              Print as a C byte array"
     print "/x expr                           Search hexadecimal string"
     print "/s expr                           Search strings"
     print "/i expr                           Search string ignoring case"
@@ -253,6 +255,17 @@ def main(filename):
                 
                 if line != "":
                     print repr(line)
+            elif cmd == "byte":
+                lines = 0
+                line = ""
+                for c in pyew.buf:
+                    line += "0x%x, " % ord(c)
+                    if len(line) >= pyew.hexcolumns / (1.00/4.00):
+                        print line
+                        line = ""
+                
+                if line != "":
+                    print "{%s}" % line
             elif cmd.lower().split(" ")[0] in ["r", "repr"]:
                 print repr(pyew.buf)
             elif cmd.lower().split(" ")[0] in ["p"]:

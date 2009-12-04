@@ -195,6 +195,7 @@ def main(filename):
                 break
             elif cmd.lower() in ["a", "anal"]:
                 pyew.findFunctions(pyew.processor)
+                print
             elif cmd.lower() in ["x", "dump", "hexdump"]:
                 print pyew.hexdump(pyew.buf, pyew.hexcolumns, baseoffset=pyew.offset)
             elif cmd.split(" ")[0] in ["s", "seek"]:

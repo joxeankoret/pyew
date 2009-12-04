@@ -449,6 +449,7 @@ class CPyew:
             self.log()
         except:
             self.log("PEFILE:", sys.exc_info()[1])
+            raise
 
     def loadPlugins(self):
         path = PLUGINS_PATH
@@ -498,7 +499,7 @@ class CPyew:
                 break
         return result
 
-    def getDisassembleObject(self, obj):
+    def getDisassembleObject(self, obj, idx=0):
         if type(obj) is tuple:
             ret = CDisObj()
             ret.offset = obj[0]
@@ -518,15 +519,22 @@ class CPyew:
             ret.instructionHex = obj[3]
             return ret
         else:
-            return obj
+            ret = CDisObj()
+            ret.offset = obj.offset
+            ret.size = obj.size
+            ret.mnemonic = obj.mnemonic
+            ret.operands = obj.operands
+            ret.instructionHex = obj.instructionHex
+            return ret
+            #return obj
     
-    def disasm(self, offset=0, processor="intel", type=32, lines=1, bsize=512):
+    def disasm(self, offset=0, processor="intel", mtype=32, lines=1, bsize=512):
         if processor == "intel":
-            if type == 32:
+            if mtype == 32:
                 decode = Decode32Bits
-            elif type == 16:
+            elif mtype == 16:
                 decode = Decode16Bits
-            elif type == 64:
+            elif mtype == 64:
                 decode = Decode64Bits
             else:
                 raise EUnknownDisassemblyType()
@@ -538,13 +546,14 @@ class CPyew:
             buf = self.getBytes(offset, bsize)
             
             for i in Decode(offset, buf, decode):
-                i = self.getDisassembleObject(i)
+                i = self.getDisassembleObject(i, ilines)
                 ret.append(i)
+                
                 ilines += 1
                 
                 if ilines == lines:
                     break
-            
+                
             return ret
 
     def disassemble(self, buf, processor="intel", type=32, lines=40, bsize=512, baseoffset=0):

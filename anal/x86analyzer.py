@@ -26,6 +26,7 @@ class CX86CodeAnalyzer:
     
     pyew = None
     type = "PE"
+    names = {}
     functions = {}
     functions_address = {}
     xrefs_to = {}
@@ -50,6 +51,7 @@ class CX86CodeAnalyzer:
         
         self.pyew.antidebug = self.antidebug
         self.pyew.names.update(self.functions)
+        self.pyew.names.update(self.names)
         self.pyew.functions = self.functions
         self.pyew.functions_address = self.functions_address
         self.pyew.xrefs_to = self.xrefs_to
@@ -111,7 +113,7 @@ class CX86CodeAnalyzer:
             name = "sub_%08x" % offset
         
         if self.pyew.debug:
-            print "Adding function %s" % name
+            print " Adding function %s" % name
         self.functions[offset] = name
         
         return True
@@ -149,25 +151,23 @@ class CX86CodeAnalyzer:
             sys.stdout.flush()
         
         self.checking.append(offset)
-        self.analyzed.append(offset)
-        lines = self.pyew.disasm(offset, self.pyew.processor, self.pyew.type, 1024, 16000)
+        lines = self.pyew.disasm(offset, self.pyew.processor, self.pyew.type, 100, 1600)
         i = 0
         prev = ""
         info = ""
+        null_instructions = 0
         
         for l in lines:
             i += 1
-            """
-            if i >= 1000: # Just in case
-                break
-            """
+            
             if l.offset in self.analyzed:
                 break
+            else:
+                self.analyzed.append(offset)
             
             if not self.pyew.batch:
                 sys.stdout.write("\b"*10 + "0x%08x" % l.offset)
             
-            self.analyzed.append(l.offset)
             self.checking.append(l.offset)
             
             mnem = str(l.mnemonic)
@@ -191,22 +191,29 @@ class CX86CodeAnalyzer:
                 ops = self.pyew.resolveName(l.operands)
                 self.addXref(l.offset, ops)
                 
-                if self.pyew.names.has_key(ops) or True:
+                if ops in self.pyew.names.values():
                     try:
                         tmp = "j_" + str(ops)
-                        if not self.addFunction(l.offset, tmp, tocheck=True):
-                            pass # Already added
+                        self.names[l.offset] = tmp
+                        #if not self.addFunction(l.offset, tmp, tocheck=True):
+                        #    pass # Already added
                     except:
                         pass
                 else:
-                    self.queue.add(ops)
+                    self.queue.append(ops)
                 
                 self.analyzed.append(offset)
+                # XXX: FIXME
+                prev = mnem
+                info = str(l.operands)
                 break
             elif mnem.startswith("J"):
                 try:
                     new_offset = int(self.pyew.resolveName(l.operands), 16)
                 except ValueError, TypeError:
+                    # XXX: FIXME
+                    prev = mnem
+                    info = str(l.operands)
                     continue
                 
                 self.addXref(l.offset, new_offset)
@@ -221,9 +228,15 @@ class CX86CodeAnalyzer:
                     try:
                         info = int(str(info), 16)
                     except ValueError, TypeError:
+                        # XXX: FIXME
+                        prev = mnem
+                        info = str(l.operands)
                         continue
                     
                     if info >= self.pyew.maxsize or info <= 0:
+                        # XXX: FIXME
+                        prev = mnem
+                        info = str(l.operands)
                         continue
                     
                     self.addXref(l.offset, info)
@@ -236,6 +249,20 @@ class CX86CodeAnalyzer:
             else:
                 prev = mnem
                 info = str(l.operands)
+                
+                """ Makes no sense in real apps a code like:
+                
+                    MOV [EAX], AL
+                    MOV [EAX], AL
+                    
+                    So exit from this function"""
+                if str(l.instructionHex) == "0000":
+                    null_instructions += 1
+                    
+                    if null_instructions >= 2:
+                        break
+                else:
+                    null_instructions = 0
         
         name = self.pyew.resolveName(offset)
         # Isn't a f*cking basic block?

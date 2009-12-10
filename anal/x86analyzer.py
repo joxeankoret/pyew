@@ -151,7 +151,10 @@ class CX86CodeAnalyzer:
             sys.stdout.flush()
         
         self.checking.append(offset)
+        # Fix for a bug in PyDistorm
         lines = self.pyew.disasm(offset, self.pyew.processor, self.pyew.type, 100, 1600)
+        last = lines[len(lines)-1]
+        lines.extend(self.pyew.disasm(last.offset+last.size, self.pyew.processor, self.pyew.type, 100, 1600))
         i = 0
         prev = ""
         info = ""

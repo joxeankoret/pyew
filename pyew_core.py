@@ -96,6 +96,55 @@ class CStrings:
         ret = scanner.findall(self.buf)
         return ret
 
+
+
+
+class COffsetString:
+    
+    buf = None
+    minsize = 3
+    offset = 4
+    
+    def searchForStringAt(self, i):
+        initial = i
+        ret = self.buf[i:i+1]
+        
+        while 1:
+            i += self.offset
+            tmp = self.buf[i:i+1]
+            if tmp.isalpha():
+                ret += tmp
+            elif tmp == "\x00":
+                if len(ret) > self.minsize:
+                    return (ret, initial)
+                else:
+                    return None
+            elif tmp == "":
+                return None
+            else:
+                return None
+
+    def findall(self):
+        i = 0
+        ret = []
+        while 1:
+            c = self.buf[i:i+1]
+            
+            if not c:
+                break
+            
+            if c.isalpha():
+                s = self.searchForStringAt(i)
+                if s is not None:
+                    ret.append(s)
+                    i += len(s[0])*4
+                else:
+                    i += 1
+            else:
+                i += 1
+        
+        return ret
+
 class CPyew:
     debug = False
     batch = False
@@ -105,6 +154,8 @@ class CPyew:
     offset = 0
     previousoffset = []
     lastasmoffset = 0
+    minoffsetsize = 4
+    deltaoffset = 4
     physical = False
     format = "raw"
     buf = None
@@ -700,8 +751,21 @@ class CPyew:
         
         return hints
 
+    def extractoffsetstring(self, buf, doprint=True, offset=0):
+        strs = COffsetString()
+        strs.minsize = self.minoffsetsize
+        strs.offset = self.deltaoffset
+        strs.buf = buf
+        l = strs.findall()
+        if doprint:
+            for x in l:
+                pos = x[1]+offset
+                val = x[0]
+                self.log("HINT[0x%08x]: %s" % (pos, val))
+        return l
+
     def dosearch(self, f, mtype, search, cols=32, doprint=True, offset=0):
-        if (search == None or search == "") and mtype not in ["s"]:
+        if (search == None or search == "") and mtype not in ["s", "o"]:
             return []
         
         oldpos = f.tell()
@@ -716,6 +780,9 @@ class CPyew:
             hints = self.strings(buf, doprint, offset=offset)
         elif mtype == "r":
             hints = self.extract(buf, strre=search, doprint=doprint, offset=offset)
+        elif mtype == "o":
+            hints = self.extractoffsetstring(buf, doprint=doprint, offset=offset)
+            
         else:
             try:
                 self.calls = []

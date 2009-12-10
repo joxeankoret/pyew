@@ -160,11 +160,13 @@ def main(filename):
                         tmp = pyew.previousoffset[len(pyew.previousoffset)-1]
                     else:
                         tmp = 0
-                    
+                        
                     pyew.offset = tmp
-                    pyew.lastasmoffset = pyew.offset
-                    pyew.seek(pyew.offset)
-                    last_cmd = "c"
+                    pyew.lastasmoffset = tmp
+                    pyew.seek(tmp)
+                    if last_cmd.isdigit():
+                        last_cmd = "c"
+                    
                 elif cmd == "b" and last_cmd == "b":
                     if len(pyew.previousoffset) < 2:
                         continue
@@ -180,7 +182,7 @@ def main(filename):
                         last_cmd = "c"
                 else:
                     pyew.offset = pyew.offset+pyew.bsize
-                    pyew.seek(pyew.offset + pyew.bsize)
+                    pyew.seek(pyew.offset)
                 cmd = last_cmd
         except EOFError:
             break

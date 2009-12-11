@@ -47,6 +47,7 @@ class CVirusTotalScanner:
         
         self.filename = filename
         self.md5 = strmd5
+        matches = {}
         
         if data.find("<b>Error:</b>") > -1:
             if self.printResults:

@@ -374,6 +374,7 @@ class CPyew:
             self.log("Code Analysis ...")
             self.findIntelFunctions()
             if self.debug:
+                self.log("")
                 self.log("Total time %f second(s)" % (time.time()-t))
 
     def loadElf(self):

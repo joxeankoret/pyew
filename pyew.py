@@ -130,6 +130,10 @@ def main(filename):
     cmd = ""
     last_cmd = ""
     pyew.previousoffset = []
+    
+    # Add global object's references for easier usage
+    pe = pyew.pe
+    elf = pyew.elf
 
     while 1:
         try:

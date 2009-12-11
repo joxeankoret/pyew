@@ -72,6 +72,7 @@ class CX86CodeAnalyzer:
         while 1:
             if len(self.queue) == 0:
                 if self.pyew.debug:
+                    print
                     print "NO more elements in queue"
                 break
             
@@ -118,7 +119,11 @@ class CX86CodeAnalyzer:
         
         return True
 
-    def doAnalyzeFunction(self, offset):
+    def doAnalyzeFunction(self, offset, level=0):
+        
+        if level >= 10:
+            return
+        
         if offset in self.analyzed:
             return
         
@@ -220,7 +225,7 @@ class CX86CodeAnalyzer:
                     continue
                 
                 self.addXref(l.offset, new_offset)
-                self.doAnalyzeFunction(new_offset)
+                self.doAnalyzeFunction(new_offset, level+1)
                 self.analyzed.append(new_offset)
                 if new_offset in self.queue:
                     self.queue.remove(new_offset)
@@ -243,8 +248,12 @@ class CX86CodeAnalyzer:
                         continue
                     
                     self.addXref(l.offset, info)
-                    self.doAnalyzeFunction(info)
+                    self.doAnalyzeFunction(info, level+1)
                     self.addFunction(info, "ret_%08x" % info, tocheck=True)
+                break
+            elif mnem.startswith("JMP"):
+                print " 0x%08x YES 0x%08x" % (l.offset, info)
+                self.doAnalyzeFunction(info, level+1)
                 break
             elif mnem.startswith("INT") or mnem.startswith("UD") or \
                  mnem.startswith("RDTSC"):

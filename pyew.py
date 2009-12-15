@@ -75,6 +75,7 @@ def showHelp(pyew):
     print "?/help                            Show this help"
     print "x/dump/hexdump                    Show hexadecimal dump"
     print "s/seek                            Seek to a new offset"
+    print "b                                 Return to previous offset"
     print "g/G                               Goto BOF (g) or EOF (G)"
     print "+/-                               Go forward/backward one block (specified by pyew.bsize)"
     print "c/d/dis/pd                        Show disassembly"
@@ -89,6 +90,8 @@ def showHelp(pyew):
     print "/r expr                           Search regular expression"
     print "/u expr                           Search unicode expression"
     print "/U expr                           Search unicode expression ignoring case"
+    print "file                              Load as new file the buffer from the current offset"
+    print "ret                               Return to the original file (use after 'file')"
     print
     print "Cryptographic functions: md5, sha1, sha224, sha256, sha384, sha512"
     print
@@ -127,6 +130,7 @@ def main(filename):
     pyew.offset = 0
     print pyew.hexdump(pyew.buf, pyew.hexcolumns)
 
+    oldpyew = None
     cmd = ""
     last_cmd = ""
     pyew.previousoffset = []
@@ -331,6 +335,16 @@ def main(filename):
                 print "%s: %s" % (cmd, func(pyew.getBuffer()).hexdigest())
             elif cmd.startswith("!"):
                 os.system(cmd[1:])
+            elif cmd == "ret" and oldpyew is not None:
+                pyew = oldpyew
+                pyew.seek(pyew.offset)
+                oldpyew = None
+            elif cmd == "file":
+                oldpyew = pyew
+                del pyew
+                pyew = CPyew()
+                buf = oldpyew.getBytes(oldpyew.offset, oldpyew.maxsize)
+                pyew.loadFromBuffer(buf, oldpyew.filename + "[embed]")
             else:
                 if cmd.find("=") > -1 or cmd.startswith("print") or cmd.startswith("import "):
                     exec(cmd)

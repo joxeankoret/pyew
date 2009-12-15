@@ -272,6 +272,15 @@ class CPyew:
         self.seek(0)
         self.fileTypeLoad()
         self.offset = 0
+    
+    def loadFromBuffer(self, buf, filename="<memory>"):
+        f = StringIO.StringIO(buf)
+        self.f = f
+        self.physical = False
+        self.filename = filename
+        self.maxsize = len(buf)
+        self.buf = buf[:self.bsize]
+        self.fileTypeLoad()
 
     def fileTypeLoad(self):
         if self.buf.startswith("MZ") and hasPefile:
@@ -425,11 +434,16 @@ class CPyew:
 
     def loadPeFunctions(self, pe):
         try:
-            for entry in pe.DIRECTORY_ENTRY_IMPORT:
+            for entry in self.pe.DIRECTORY_ENTRY_IMPORT:
                 for imp in entry.imports:
-                    self.names[imp.address] = entry.dll + "!" + imp.name
-                    self.imports[imp.address] = entry.dll + "!" + imp.name
+                    if imp.name:
+                        name = imp.name
+                    else:
+                        name = "#" + str(imp.ordinal)
+                    self.names[imp.address] = str(entry.dll) + "!" + str(name)
+                    self.imports[imp.address] = str(entry.dll) + "!" + str(name)
         except:
+            print "***Error loading imports", sys.exc_info()[1]
             pass
             
         try:
@@ -493,10 +507,12 @@ class CPyew:
             x += s.PointerToRawData
             ep = x
             self.log("Entry Point at 0x%x" % x)
-            self.log("Virtual Address is 0x%0x" % (self.pe.OPTIONAL_HEADER.ImageBase + self.pe.get_rva_from_offset(x)))
-            self.offset = x
-            self.ep = x
-            
+	    try:
+                self.log("Virtual Address is 0x%0x" % (self.pe.OPTIONAL_HEADER.ImageBase + self.pe.get_rva_from_offset(x)))
+                self.offset = x
+                self.ep = x
+	    except:
+	        self.log(sys.exc_info()[1])
             self.loadPeFunctions(self.pe)
             self.log()
         except:

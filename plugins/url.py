@@ -84,8 +84,10 @@ def doFind(x, buf):
     
     return ret
 
-def checkUrls(pyew):
+def checkUrls(pyew, doprint=True):
     """ Check URLs of the current file """
+    
+    oks = []
     urls = urlExtract(pyew, doprint=False)
     
     if len(urls) == 0:
@@ -94,16 +96,56 @@ def checkUrls(pyew):
 
     for url in urls:
         try:
-            sys.stdout.write("Checking %s ... " % url)
+            if doprint:
+                sys.stdout.write("Checking %s ... " % url)
+                sys.stdout.flush()
             r = urllib.urlopen(url)
-            sys.stdout.write("OK\n")
-            sys.stdout.flush()
+            
+            if doprint:
+                sys.stdout.write("OK\n")
+                sys.stdout.flush()
+            
+            oks.appen(url)
         except KeyboardInterrupt:
             print "Aborted"
             break
         except:
             sys.stdout.write("DOWN\n")
             sys.stdout.flush()
+        
+    return oks
 
-functions = {"url":urlExtract, "chkurl":checkUrls}
+def checkBad(pyew, doprint=True):
+    """ Check for known bad URLs """
+    
+    returls = []
+    
+    url = "http://www.malware.com.br/cgi/submit?action=list_adblock"
+    try:
+        l = urllib.urlopen(url).readlines()
+    except:
+        print "***Error fetching URL list from www.malware.com.br:", sys.exc_info()[1]
+        return
+
+    urls = urlExtract(pyew, doprint=False)
+    
+    if len(urls) == 0:
+        print "***No URLs found"
+        return
+
+    for url in urls:
+        for badurl in l:
+            if badurl.startswith("["):
+                continue
+            badurl = badurl.strip("\n").strip("\r")
+            if url.lower().find(badurl) > -1:
+                if doprint:
+                    print "***Found bad URL: %s" % url
+                
+                returls.append(url)
+                break
+
+    return returls
+
+functions = {"url":urlExtract, "chkurl":checkUrls, "chkbad":checkBad}
 

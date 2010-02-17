@@ -55,12 +55,6 @@ except:
     except:
         pass
 
-try:
-    from jdisasm import ParseClass
-    hasJdisasm = True
-except:
-    hasJdisasm = False
-
 from config import PLUGINS_PATH
 
 FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
@@ -95,9 +89,6 @@ class CStrings:
                             re.MULTILINE | re.IGNORECASE)
         ret = scanner.findall(self.buf)
         return ret
-
-
-
 
 class COffsetString:
     
@@ -146,39 +137,53 @@ class COffsetString:
         return ret
 
 class CPyew:
-    debug = False
-    batch = False
-    antidebug = []
-    virtual = False
-    codeanalysis = True
-    offset = 0
-    previousoffset = []
-    lastasmoffset = 0
-    minoffsetsize = 4
-    deltaoffset = 4
-    physical = False
-    format = "raw"
-    buf = None
-    mode = None
-    filename = None
-    processor="intel"
-    f = None
-    type=32
-    lines=40
-    bsize=512
-    hexcolumns=16
-    maxfilesize=1024*1024*1024
-    pe = None
-    elf = None
-    calls = []
-    plugins = {}
-    maxsize = None
-    names = {}
-    imports = {}
-    exports = {}
-    ep = 0
 
     def __init__(self, plugins=True, batch=False):
+        self.debug = False
+        self.batch = False
+        self.antidebug = []
+        self.virtual = False
+        self.codeanalysis = True
+        self.offset = 0
+        self.previousoffset = []
+        self.lastasmoffset = 0
+        self.minoffsetsize = 4
+        self.deltaoffset = 4
+        self.physical = False
+        self.format = "raw"
+        self.buf = None
+        self.mode = None
+        self.filename = None
+        self.processor="intel"
+        self.f = None
+        self.type=32
+        self.lines=40
+        self.bsize=512
+        self.hexcolumns=16
+        self.maxfilesize=1024*1024*1024
+        self.pe = None
+        self.elf = None
+        self.calls = []
+        self.plugins = {}
+        self.maxsize = None
+        self.names = {}
+        self.imports = {}
+        self.exports = {}
+        self.ep = 0
+        
+        self.names = {}
+        self.functions = {}
+        self.functions_address = {}
+        self.xrefs_to = {}
+        self.xrefs_from = {}
+        self.queue = []
+        self.analyzed = []
+        self.checking = []
+        self.tocheck = []
+        self.antidebug = []
+        self.function_stats = {}
+        self.basic_blocks = {}
+        
         self.batch = batch
         self.loadPlugins()
 
@@ -245,7 +250,8 @@ class CPyew:
         for x in dir(self):
             if x.startswith("_") or x in ["pe", "elf", "buf"] or operator.isCallable(eval("self." + x)) \
                or x in ["plugins", "names", "imports", "exports", "functions_address", \
-                        "names", "functions", "xrefs_from", "xrefs_to", "antidebug"]:
+                        "names", "functions", "xrefs_from", "xrefs_to", "antidebug", \
+                        "function_stats", "basic_blocks"]:
                 continue
             else:
                 self.log("pyew." + x.ljust(16) + ":", eval("self." + x))
@@ -272,7 +278,7 @@ class CPyew:
         self.seek(0)
         self.fileTypeLoad()
         self.offset = 0
-    
+
     def loadFromBuffer(self, buf, filename="<memory>"):
         f = StringIO.StringIO(buf)
         self.f = f
@@ -289,8 +295,6 @@ class CPyew:
             self.loadElf()
         elif self.buf.startswith("\xB3\xF2\x0D\x0A"):
             self.loadPython()
-        elif self.buf.startswith("\xCA\xFE\xBA\xBE"):
-            self.loadJava()
         elif self.buf.startswith("%PDF-"):
             self.loadPDF()
         elif self.buf.startswith("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"):
@@ -320,14 +324,6 @@ class CPyew:
         self.log()
         self.processor="python"
     
-    def loadJava(self):
-        self.format = "JAVA"
-        if self.batch:
-            return
-        self.log("JAVA Class")
-        self.log()
-        self.processor="java"
-
     def createIntelFunctionsByPrologs(self):
         total = 0
         
@@ -728,13 +724,6 @@ class CPyew:
             self.seek(0)
             buf = self.f.read()
             self.log(dis.dis(buf))
-            self.seek(moffset)
-            ret = ""
-        elif processor == "java":
-            moffset = self.offset
-            self.seek(0)
-            buf = self.f.read(0)
-            ParseClass(self.filename)
             self.seek(moffset)
             ret = ""
         

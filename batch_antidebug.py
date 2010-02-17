@@ -30,20 +30,19 @@ def checkAntidebug(path):
         print "ERROR loading file %s" % path
         return
 
-    if pyew.format != "PE":
+    if pyew.format not in ["PE", "ELF"]:
         return
-    
-    antidebug = pyew.antidebug
-    
+
+    msg = pyew.antidebug
+
     if len(antidebug) > 0:
         print
-        printData(pyew, path, "Possible antidebugs")
-        print "Antidebugs:", antidebug
+        printData(pyew, path, msg)
         print "Time to analyze %f" % (time.time() - t)
         print
 
 def doChecks(path):
-    checkAntidebug(path)
+    do_basic_graph_analysis(path)
 
 def main(path):
     buf = ""

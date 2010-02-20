@@ -289,16 +289,19 @@ class CPyew:
         self.fileTypeLoad()
 
     def fileTypeLoad(self):
-        if self.buf.startswith("MZ") and hasPefile:
-            self.loadPE()
-        elif self.buf.startswith("\x7FELF") and hasElf:
-            self.loadElf()
-        elif self.buf.startswith("\xB3\xF2\x0D\x0A"):
-            self.loadPython()
-        elif self.buf.startswith("%PDF-"):
-            self.loadPDF()
-        elif self.buf.startswith("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"):
-            self.loadOle2()
+        try:
+            if self.buf.startswith("MZ") and hasPefile:
+                self.loadPE()
+            elif self.buf.startswith("\x7FELF") and hasElf:
+                self.loadElf()
+            elif self.buf.startswith("\xB3\xF2\x0D\x0A"):
+                self.loadPython()
+            elif self.buf.startswith("%PDF-"):
+                self.loadPDF()
+            elif self.buf.startswith("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"):
+                self.loadOle2()
+        except:
+            print "Error loading file:", sys.exc_info()[1]
 
     def loadPDF(self):
         self.format = "PDF"
@@ -520,7 +523,7 @@ class CPyew:
         sys.path.append(path)
         
         for f in os.listdir(path):
-            if f.startswith("_") or f.endswith("pyc"):
+            if f.startswith("_") or f.endswith("pyc") or f.startswith("."):
                 continue
             
             f = f.rstrip(".py")
@@ -788,7 +791,7 @@ class CPyew:
             hints = self.extract(buf, strre=search, doprint=doprint, offset=offset)
         elif mtype == "o":
             hints = self.extractoffsetstring(buf, doprint=doprint, offset=offset)
-            
+        
         else:
             try:
                 self.calls = []

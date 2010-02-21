@@ -271,7 +271,7 @@ def pdfStreams(pyew, doprint=True, get_buf=False):
     else:
         return stream_filters, buf
 
-def pdfViewStreams(pyew, doprint=True, stream_id=0, gui=False):
+def pdfViewStreams(pyew, doprint=True, stream_id=-1, gui=False):
     """ Show decoded streams """
     streams_filters, buf = pdfStreams(pyew, doprint=False, get_buf=True)
 
@@ -287,63 +287,67 @@ def pdfViewStreams(pyew, doprint=True, stream_id=0, gui=False):
         tmp = buf[pos+8:pos2-1]
         failed = False
         
-        if streams_filters.has_key(streams):
-            for filter in streams_filters[streams]:
-                try:
-                    print "Applying Filter %s ..." % filter
-                    if filter == "FlateDecode":
-                        tmp = zlib.decompress(tmp)
-                    elif filter == "ASCIIHexDecode":
-                        tmp = binascii.unhexlify(tmp.strip("\r").strip("\n").strip("<").strip(">"))
-                    elif filter == "ASCII85Decode":
-                        tmp = ASCII85Decode(tmp)
-                    elif filter == "RunLengthDecode":
-                        tmp = RunLengthDecode(tmp)
-                    elif filter == "LZWDecode":
-                        tmp = LZWDecode(tmp)
-                except:
-                    failed = True
-                    print "Error applying filter %s" % filter, sys.exc_info()[1]
+        if stream_id == -1 or streams == stream_id:
+            if streams_filters.has_key(streams):
+                for filter in streams_filters[streams]:
+                    try:
+                        print "Applying Filter %s ..." % filter
+                        if filter == "FlateDecode":
+                            tmp = zlib.decompress(tmp)
+                        elif filter == "ASCIIHexDecode":
+                            tmp = binascii.unhexlify(tmp.strip("\r").strip("\n").strip("<").strip(">"))
+                        elif filter == "ASCII85Decode":
+                            tmp = ASCII85Decode(tmp)
+                        elif filter == "RunLengthDecode":
+                            tmp = RunLengthDecode(tmp)
+                        elif filter == "LZWDecode":
+                            tmp = LZWDecode(tmp)
+                    except:
+                        failed = True
+                        print "Error applying filter %s" % filter, sys.exc_info()[1]
+                
+                print "Encoded Stream %d" % streams
+            else:
+                print "Stream %d" % streams
             
-            print "Encoded Stream %d" % streams
-        else:
-            print "Stream %d" % streams
-        
-        if not gui:
-            print "-"*80
-            if tmp.find("\x00") == -1:
-                print tmp
+            if not gui:
+                print "-"*80
+                if tmp.find("\x00") == -1:
+                    print tmp
+                else:
+                    print pyew.hexdump(tmp, pyew.hexcolumns)
+                print "-"*80
             else:
-                print pyew.hexdump(tmp, pyew.hexcolumns)
-            print "-"*80
-        else:
-            if tmp.find("\x00") == -1:
-                textbox("Stream %d" % streams, "Stream", tmp)
-            else:
-                codebox("Stream %d" % streams, "Stream", pyew.hexdump(tmp, pyew.hexcolumns))
-        
-        if tmp.find("\x00") > -1 and not failed and not gui:
-            res = raw_input("Show disassembly (y/n)? [n]: ")
-            if res == "y":
-                print pyew.disassemble(tmp)
+                if tmp.find("\x00") == -1:
+                    textbox("Stream %d" % streams, "Stream", tmp)
+                else:
+                    codebox("Stream %d" % streams, "Stream", pyew.hexdump(tmp, pyew.hexcolumns))
+            
+            if tmp.find("\x00") > -1 and not failed and not gui:
+                res = raw_input("Show disassembly (y/n)? [n]: ")
+                if res == "y":
+                    print pyew.disassemble(tmp)
         
         buf = buf[pos2+11:]
         if buf.find("stream") == -1:
             break
         
-        try:
-            if not gui:
-                res = raw_input("Continue? ")
-                
-                if res in ["q", "n"]:
-                    break
-            else:
-                if not ccbox("Do you want to continue?", "Streams Viewer"):
-                    break
-        except:
+        if stream_id == -1:
+            try:
+                if not gui:
+                    res = raw_input("Continue? ")
+                    
+                    if res in ["q", "n"]:
+                        break
+                else:
+                    if not ccbox("Do you want to continue?", "Streams Viewer"):
+                        break
+            except:
+                break
+        elif stream_id == streams:
             break
 
-def pdfViewGui(pyew, doprint=True, stream_id=0):
-    return pdfViewStreams(pyew, doprint, stream_id, True)
+def pdfViewGui(pyew, doprint=True, stream_id=-1):
+    return pdfViewStreams(pyew, doprint=doprint, stream_id=stream_id, gui=True)
 
 functions = {"pdf":pdfInfo, "pdfilter":pdfStreams, "pdfvi":pdfViewStreams, "pdfview":pdfViewGui}

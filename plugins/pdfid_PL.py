@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+
+__description__ = 'Tool to test a PDF file'
+__author__ = 'Didier Stevens, Philippe Lagadec'
+__version__ = '0.0.10_PL'
+__date__ = '2010/02/22'
+
 """
 
 Tool to test a PDF file
@@ -7,7 +13,8 @@ Source code put in public domain by Didier Stevens, no Copyright
 https://DidierStevens.com
 Use at your own risk
 
-Version modified by Philippe Lagadec for easier integration as a Python module.
+"PL" Version modified by Philippe Lagadec for easier integration as a Python module.
+(see http://www.decalage.info/python/pdfid)
 
 History:
   2009/03/27: start
@@ -23,16 +30,14 @@ History:
   2009/07/24: V0.0.8: added /AcroForm and /RichMedia, simplified %PDF header regex, extra date format (without TZ)
   2009/07/25: added input redirection, option --force
   2009/10/13: V0.0.9: added detection for CVE-2009-3459; added /RichMedia to disarm
-  2009/10/19: v0.0.9_PL modified for easier integration as Python module
+  2009/10/19: v0.0.9_PL: modified for easier integration as Python module
+  2010/01/11: V0.0.10: relaxed %PDF header checking
+  2010/02/22: v0.0.10_PL: updated from v0.0.10
 
 Todo:
   - update XML example (entropy, EOF)
   - code review, cleanup
 """
-
-__author__ = 'Didier Stevens, Philippe Lagadec'
-__version__ = '0.0.9_PL'
-__date__ = '2009/10/19'
 
 import optparse
 import os
@@ -65,8 +70,24 @@ class cBinaryFile:
             return None
         return ord(inbyte)
 
+    def bytes(self, size):
+        if size <= len(self.ungetted):
+            result = self.ungetted[0:size]
+            del self.ungetted[0:size]
+            return result
+        inbytes = self.infile.read(size - len(self.ungetted))
+        if inbytes == '':
+            self.infile.close()
+        result = self.ungetted + [ord(b) for b in inbytes]
+        self.ungetted = []
+        return result
+
     def unget(self, byte):
         self.ungetted.append(byte)
+
+    def ungets(self, bytes):
+        bytes.reverse()
+        self.ungetted.extend(bytes)
 
 class cPDFDate:
     def __init__(self):
@@ -201,38 +222,17 @@ class cPDFEOF:
         else:
             self.token = ''
 
-def FindPDFHeader(oBinaryFile):
-    byte = oBinaryFile.byte()
-    comment = ''
-#    rePDF = re.compile('^%PDF\-\d\.\d\s*$')
-    rePDF = re.compile('^%PDF')
-    bytes = []
-    while byte != None:
-        bytes.append(byte)
-        if comment == '':
-            if byte == 0 or byte == 9 or byte == 10 or byte == 12 or byte == 13 or byte == 32:
-                pass
-            elif byte == 37:
-                comment = '%'
-            else:
-                oBinaryFile.unget(byte)
-                if bytes != []:
-                    bytes.pop()
-                return (bytes, None)
-        elif byte != 10 and byte != 13:
-            comment += chr(byte)
-        elif rePDF.match(comment):
-            return (bytes, comment)
-        else:
-            comment = ''
-        byte = oBinaryFile.byte()
-    oBinaryFile.unget(byte)
-    if bytes != []:
-        bytes.pop()
-    if comment == '':
-        return (bytes, None)
-    else:
-        return (bytes, comment)
+def FindPDFHeaderRelaxed(oBinaryFile):
+    bytes = oBinaryFile.bytes(1024)
+    index = ''.join([chr(byte) for byte in bytes]).find('%PDF')
+    if index == -1:
+        oBinaryFile.ungets(bytes)
+        return ([], None)
+    for endHeader in range(index + 4, index + 4 + 10):
+        if bytes[endHeader] == 10 or bytes[endHeader] == 13:
+            break
+    oBinaryFile.ungets(bytes[endHeader:])
+    return (bytes[0:endHeader], ''.join([chr(byte) for byte in bytes[index:endHeader]]))
 
 def Hexcode2String(char):
     if type(char) == int:
@@ -373,7 +373,7 @@ def PDFiD(file, allNames=False, extraData=False, disarm=False, force=False,
             oPDFDate = cPDFDate()
             oEntropy = cEntropy()
             oPDFEOF = cPDFEOF()
-        (bytesHeader, pdfHeader) = FindPDFHeader(oBinaryFile)
+        (bytesHeader, pdfHeader) = FindPDFHeaderRelaxed(oBinaryFile)
         if disarm:
             (pathfile, extension) = os.path.splitext(file)
             #[PL] use output filename if specified
@@ -606,7 +606,7 @@ def Scan(directory, allNames, extraData, disarm, force):
         pass
 
 def Main():
-    oParser = optparse.OptionParser(usage='usage: %prog [options] [pdf-file]', version='%prog ' + __version__)
+    oParser = optparse.OptionParser(usage='usage: %prog [options] [pdf-file]\n' + __description__, version='%prog ' + __version__)
     oParser.add_option('-s', '--scan', action='store_true', default=False, help='scan the given directory')
     oParser.add_option('-a', '--all', action='store_true', default=False, help='display all the names')
     oParser.add_option('-e', '--extra', action='store_true', default=False, help='display extra data, like dates')
@@ -627,7 +627,7 @@ def Main():
     else:
         oParser.print_help()
         print ''
-        print '  Tool to test a PDF file'
+        print '  %s' % __description__
         print '  Source code put in the public domain by Didier Stevens, no Copyright'
         print '  Use at your own risk'
         print '  https://DidierStevens.com'

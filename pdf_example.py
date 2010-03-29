@@ -18,7 +18,7 @@ def main(filename=None):
     streams = pyew.plugins["pdfilter"](pyew, doprint=True)
     if len(streams) == 0:
         msgbox(title="PDF Streams",msg="No encoded streams found")
-    
+
     l = []
     l.append("About PDF Streams Viewer")
     l.append("See all streams (both encoded and unencoded)")

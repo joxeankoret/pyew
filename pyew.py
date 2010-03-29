@@ -68,7 +68,7 @@ VERSION=0x01010200
 HUMAN_VERSION="1.1.2.0"
 
 def showHelp(pyew):
-    print PROGRAM, VERSION, "(%s)" % HUMAN_VERSION
+    print PROGRAM, "0x%x" % VERSION, "(%s)" % HUMAN_VERSION
     print
     print "Commands:"
     print

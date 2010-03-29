@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 
+import os
 import re
 import sys
 import zlib
@@ -284,20 +285,31 @@ def pdfViewStreams(pyew, doprint=True, stream_id=-1, gui=False):
         streams += 1
         pos2 = buf.find("endstream")
         # -8 means -len("stream")
-        tmp = buf[pos+8:pos2-1]
+        #tmp = buf[pos+8:pos2-1]
+        tmp = buf[pos+6:pos2]
         failed = False
-        
+        dones = []
         if stream_id == -1 or streams == stream_id:
             if streams_filters.has_key(streams):
                 for filter in streams_filters[streams]:
                     try:
                         print "Applying Filter %s ..." % filter
+                        if filter in dones:
+                            print pyew.hexdump(tmp, pyew.hexcolumns)
+                            msg = "The filter %s is already applied, it seems to be a PDF Bomb."
+                            msg += os.linesep + "Do you want to apply it? "
+                            ret = raw_input(msg % filter)
+                            if ret != "y":
+                                continue
+                        else:
+                            dones.append(filter)
+                        
                         if filter == "FlateDecode":
-                            tmp = zlib.decompress(tmp)
+                            tmp = zlib.decompress(tmp.strip("\r").strip("\n"))
                         elif filter == "ASCIIHexDecode":
-                            tmp = binascii.unhexlify(tmp.strip("\r").strip("\n").strip("<").strip(">"))
+                            tmp = binascii.unhexlify(tmp.replace("\r", "").replace("\n", "").strip("<").strip(">"))
                         elif filter == "ASCII85Decode":
-                            tmp = ASCII85Decode(tmp)
+                            tmp = ASCII85Decode(tmp.strip("\r").strip("\n"))
                         elif filter == "RunLengthDecode":
                             tmp = RunLengthDecode(tmp)
                         elif filter == "LZWDecode":
@@ -348,6 +360,7 @@ def pdfViewStreams(pyew, doprint=True, stream_id=-1, gui=False):
             break
 
 def pdfViewGui(pyew, doprint=True, stream_id=-1):
+    """ Show decoded streams (in a GUI) """
     return pdfViewStreams(pyew, doprint=doprint, stream_id=stream_id, gui=True)
 
 functions = {"pdf":pdfInfo, "pdfilter":pdfStreams, "pdfvi":pdfViewStreams, "pdfview":pdfViewGui}

@@ -287,6 +287,7 @@ def pdfViewStreams(pyew, doprint=True, stream_id=-1, gui=False):
         # -8 means -len("stream")
         #tmp = buf[pos+8:pos2-1]
         tmp = buf[pos+6:pos2]
+        tmp = tmp.lstrip(" ")
         failed = False
         dones = []
         if stream_id == -1 or streams == stream_id:

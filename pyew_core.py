@@ -525,12 +525,12 @@ class CPyew:
             x += s.PointerToRawData
             ep = x
             self.log("Entry Point at 0x%x" % x)
-	    try:
+            try:
                 self.log("Virtual Address is 0x%0x" % (self.pe.OPTIONAL_HEADER.ImageBase + self.pe.get_rva_from_offset(x)))
                 self.offset = x
                 self.ep = x
-	    except:
-	        self.log(sys.exc_info()[1])
+            except:
+                self.log(sys.exc_info()[1])
             self.loadPeFunctions(self.pe)
             self.log()
         except:
@@ -542,7 +542,7 @@ class CPyew:
         sys.path.append(path)
         
         for f in os.listdir(path):
-            if f.startswith("_") or f.endswith("pyc") or f.startswith("."):
+            if f.startswith("_") or f.startswith(".") or not f.endswith(".py"):
                 continue
             
             f = f.rstrip(".py")

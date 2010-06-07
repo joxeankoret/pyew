@@ -50,9 +50,12 @@ class CX86CodeAnalyzer:
         self.pyew = pyew
         self.pe = type
 
-    def doCodeAnalysis(self):
+    def doCodeAnalysis(self, ep=True, addr=None):
         try:
-            self.mDoCodeAnalysis()
+            if ep:
+                self.mDoCodeAnalysis()
+            else:
+                self.mDoCodeAnalysis(ep=False, addr=addr)
         except KeyboardInterrupt:
             pass
         
@@ -131,10 +134,15 @@ class CX86CodeAnalyzer:
             print "Ciclomatic Complexity -> Max %d Min %d Media %2.2f" % (max(ccs), min(ccs), sum(ccs)/len(ccs)*1.00)
             print "Total functions %d Total basic blocks %d" % (len(self.functions), bbs)
 
-    def mDoCodeAnalysis(self):
-        self._current_function = self.pyew.ep
-        self.addFunction(self.pyew.ep, "start")
-        self.doAnalyzeFunction(self.pyew.ep)
+    def mDoCodeAnalysis(self, ep = True, addr = None):
+        if ep:
+            self._current_function = self.pyew.ep
+            self.addFunction(self.pyew.ep, "start")
+            self.doAnalyzeFunction(self.pyew.ep)
+        else:
+            self._current_function = addr
+            self.addFunction(addr, "sub_%08x" % addr)
+            self.doAnalyzeFunction(addr)
         
         for func in self.pyew.exports:
             self._current_function = func

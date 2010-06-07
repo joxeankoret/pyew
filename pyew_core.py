@@ -329,6 +329,17 @@ class CPyew:
     
     def createIntelFunctionsByPrologs(self):
         total = 0
+        from anal.x86analyzer import CX86CodeAnalyzer
+        anal=CX86CodeAnalyzer(self)
+        anal.antidebug = self.antidebug
+        anal.names.update(self.functions)
+        anal.names.update(self.names)
+        anal.functions = self.functions
+        anal.functions_address = self.functions_address
+        anal.xrefs_to = self.xrefs_to
+        anal.xrefs_from = self.xrefs_from
+        anal.basic_blocks = self.basic_blocks
+        anal.function_stats = self.function_stats
         
         if self.type == 32:
             prologs = ["8bff558b", "5589e5"]
@@ -339,9 +350,10 @@ class CPyew:
             hints = self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
         
         for hint in hints:
-            if not self.names.has_key(hint.keys()[0]):
+            anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
+            """if not self.names.has_key(hint.keys()[0]):
                 total += 1
-                self.names[hint.keys()[0]] = "sub_%08x" % hint.keys()[0]
+                self.names[hint.keys()[0]] = "sub_%08x" % hint.keys()[0]"""
         
         if total == 0:
             prologs = ["558bec"]
@@ -349,9 +361,12 @@ class CPyew:
                 hints = self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
             
             for hint in hints:
+                anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
+                """
                 if not self.names.has_key(hint.keys()[0]):
                     total += 1
                     self.names[hint.keys()[0]] = "sub_%08x" % hint.keys()[0]
+                """
 
     def resolveName(self, ops):
         orig = str(ops)
@@ -432,6 +447,7 @@ class CPyew:
                 self.findFunctions(self.processor)
 
     def loadPeFunctions(self, pe):
+        imps = False
         try:
             for entry in self.pe.DIRECTORY_ENTRY_IMPORT:
                 for imp in entry.imports:
@@ -441,6 +457,7 @@ class CPyew:
                         name = "#" + str(imp.ordinal)
                     self.names[imp.address] = str(entry.dll) + "!" + str(name)
                     self.imports[imp.address] = str(entry.dll) + "!" + str(name)
+            imps = True
         except:
             print "***Error loading imports", sys.exc_info()[1]
             pass
@@ -467,6 +484,8 @@ class CPyew:
         if self.codeanalysis:
             if self.processor == "intel":
                 self.findFunctions(self.processor)
+                if not imps:
+                    self.createIntelFunctionsByPrologs()
 
     def loadPE(self):
         try:

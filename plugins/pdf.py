@@ -40,6 +40,8 @@ try:
 except:
     pass
 
+FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
+
 # Shamelessly ripped from pyPDF
 def ASCII85Decode(data):
     retval = ""
@@ -364,4 +366,61 @@ def pdfViewGui(pyew, doprint=True, stream_id=-1):
     """ Show decoded streams (in a GUI) """
     return pdfViewStreams(pyew, doprint=doprint, stream_id=stream_id, gui=True)
 
-functions = {"pdf":pdfInfo, "pdfilter":pdfStreams, "pdfvi":pdfViewStreams, "pdfview":pdfViewGui}
+def pdfObj(pyew, doprint=True):
+    """ Show object's list """
+    pyew.dosearch(pyew.f, "r", "\d+ \d+ obj.*", cols=60, doprint=True, offset=0)
+
+def pdfStream(pyew, doprint=True):
+    """ Show streams list """
+    l = []
+    hits = pyew.dosearch(pyew.f, "s", "stream", cols=60, doprint=False, offset=0)
+    buf = pyew.getBuffer()
+    for hit in hits:
+        key, value = hit.keys()[0], hit.values()[0]
+        if buf[key-1:key] != "d":
+            l.append(key)
+            if doprint:
+                print "HINT[0x%08x]: %s" % (key, value.translate(FILTER))
+
+    return l
+
+def pdfSeekObj(pyew, args=None):
+    """ Seek to one object """
+    if args == None:
+        print "An argument is required"
+        return False
+    
+    num = args[0].strip(" ")
+    d = pyew.dosearch(pyew.f, "r", "\d+ \d+ obj.*", cols=60, doprint=False, offset=0)
+    
+    for element in d:
+        pos = element.keys()[0]
+        if element.values()[0].split(" ")[0] == num:
+            pyew.seek(pos)
+            return True
+
+    print "Object not found"
+    return False
+
+def pdfSeekStream(pyew, args = None):
+    """ Seek to one stream """
+    if not args:
+        print "An argument is required"
+        return False
+    
+    l = pdfStream(pyew, doprint=False)
+    num = int(args[0])-1
+    if num > len(l):
+        print "Last stream is %d" % len(l)
+    else:
+        pyew.seek(l[num])
+
+functions = {"pdf":pdfInfo,
+             "pdfilter":pdfStreams,
+             "pdfvi":pdfViewStreams,
+             "pdfview":pdfViewGui,
+             "pdfobj":pdfObj,
+             "pdfstream":pdfStream,
+             "pdfso":pdfSeekObj,
+             "pdfss":pdfSeekStream}
+

@@ -328,8 +328,12 @@ def main(filename):
                 else:
                     pyew.offset -= pyew.bsize
                 pyew.seek(pyew.offset)
-            elif pyew.plugins.has_key(cmd):
-                pyew.plugins[cmd](pyew)
+            elif pyew.plugins.has_key(cmd.split(" ")[0]):
+                plg = cmd.split(" ")
+                if len(plg) == 1:
+                    pyew.plugins[plg[0]](pyew)
+                else:
+                    pyew.plugins[plg[0]](pyew, plg[1:])
             elif cmd in ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"]:
                 func = eval(cmd)
                 print "%s: %s" % (cmd, func(pyew.getBuffer()).hexdigest())

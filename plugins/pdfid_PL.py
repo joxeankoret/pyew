@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 __description__ = 'Tool to test a PDF file'
-__author__ = 'Didier Stevens, Philippe Lagadec'
-__version__ = '0.0.10_PL'
-__date__ = '2010/02/22'
+__author__ = 'Didier Stevens'
+__version__ = '0.0.11'
+__date__ = '2010/04/28'
 
 """
 
@@ -12,9 +12,6 @@ Tool to test a PDF file
 Source code put in public domain by Didier Stevens, no Copyright
 https://DidierStevens.com
 Use at your own risk
-
-"PL" Version modified by Philippe Lagadec for easier integration as a Python module.
-(see http://www.decalage.info/python/pdfid)
 
 History:
   2009/03/27: start
@@ -30,9 +27,8 @@ History:
   2009/07/24: V0.0.8: added /AcroForm and /RichMedia, simplified %PDF header regex, extra date format (without TZ)
   2009/07/25: added input redirection, option --force
   2009/10/13: V0.0.9: added detection for CVE-2009-3459; added /RichMedia to disarm
-  2009/10/19: v0.0.9_PL: modified for easier integration as Python module
   2010/01/11: V0.0.10: relaxed %PDF header checking
-  2010/02/22: v0.0.10_PL: updated from v0.0.10
+  2010/04/28: V0.0.11: added /Launch
 
 Todo:
   - update XML example (entropy, EOF)
@@ -48,9 +44,6 @@ import math
 import operator
 import os.path
 import sys
-
-#[PL] Keywords to be cleaned:
-ACTIVE_KEYWORDS = ('/JS', '/JavaScript', '/AA', '/OpenAction', '/JBIG2Decode', '/RichMedia')
 
 class cBinaryFile:
     def __init__(self, file):
@@ -252,8 +245,7 @@ def HexcodeName2String(hexcodeName):
 def SwapName(wordExact):
     return map(SwapCase, wordExact)
 
-def UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName,
-    insideStream, oEntropy, fOut, active_keywords=ACTIVE_KEYWORDS):
+def UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut):
     if word != '':
         if slash + word in words:
             words[slash + word][0] += 1
@@ -274,12 +266,10 @@ def UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName,
                         oEntropy.removeInsideStream(ord(char))
                 insideStream = False
         if fOut != None:
-            if slash == '/' and '/' + word in active_keywords:
+            if slash == '/' and '/' + word in ('/JS', '/JavaScript', '/AA', '/OpenAction', '/JBIG2Decode', '/RichMedia', '/Launch'):
                 wordExactSwapped = HexcodeName2String(SwapName(wordExact))
                 fOut.write(wordExactSwapped)
-                #[PL] avoid print when imported as module
-                if __name__ == '__main__':
-                    print '/%s -> /%s' % (HexcodeName2String(wordExact), wordExactSwapped)
+                print '/%s -> /%s' % (HexcodeName2String(wordExact), wordExactSwapped)
             else:
                 fOut.write(HexcodeName2String(wordExact))
     return ('', [], False, lastName, insideStream)
@@ -292,9 +282,7 @@ class cCVE_2009_3459:
         if (lastName == '/Colors' and word.isdigit() and int(word) > 2^24): # decided to alert when the number of colors is expressed with more than 3 bytes
             self.count += 1
 
-def PDFiD(file, allNames=False, extraData=False, disarm=False, force=False,
-    output_file=None, raise_exceptions=False, return_cleaned=False,
-    active_keywords=ACTIVE_KEYWORDS):
+def PDFiD(file, allNames=False, extraData=False, disarm=False, force=False):
     """Example of XML output:
     <PDFiD ErrorOccured="False" ErrorMessage="" Filename="test.pdf" Header="%PDF-1.1" IsPDF="True" Version="0.0.4" Entropy="4.28">
             <Keywords>
@@ -341,6 +329,7 @@ def PDFiD(file, allNames=False, extraData=False, disarm=False, force=False,
                 '/AcroForm',
                 '/JBIG2Decode',
                 '/RichMedia',
+                '/Launch',
                )
     words = {}
     dates = []
@@ -376,10 +365,7 @@ def PDFiD(file, allNames=False, extraData=False, disarm=False, force=False,
         (bytesHeader, pdfHeader) = FindPDFHeaderRelaxed(oBinaryFile)
         if disarm:
             (pathfile, extension) = os.path.splitext(file)
-            #[PL] use output filename if specified
-            if not output_file:
-                output_file = pathfile + '.disarmed' + extension
-            fOut = open(output_file, 'wb')
+            fOut = open(pathfile + '.disarmed' + extension, 'wb')
             for byteHeader in bytesHeader:
                 fOut.write(chr(byteHeader))
         else:
@@ -423,18 +409,18 @@ def PDFiD(file, allNames=False, extraData=False, disarm=False, force=False,
                     else:
                         oBinaryFile.unget(d2)
                         oBinaryFile.unget(d1)
-                        (word, wordExact, hexcode, lastName, insideStream) = UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut, active_keywords)
+                        (word, wordExact, hexcode, lastName, insideStream) = UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut)
                         if disarm:
                             fOut.write(char)
                 else:
                     oBinaryFile.unget(d1)
-                    (word, wordExact, hexcode, lastName, insideStream) = UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut, active_keywords)
+                    (word, wordExact, hexcode, lastName, insideStream) = UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut)
                     if disarm:
                         fOut.write(char)
             else:
                 oCVE_2009_3459.Check(lastName, word)
 
-                (word, wordExact, hexcode, lastName, insideStream) = UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut, active_keywords)
+                (word, wordExact, hexcode, lastName, insideStream) = UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut)
                 if char == '/':
                     slash = '/'
                 else:
@@ -452,11 +438,8 @@ def PDFiD(file, allNames=False, extraData=False, disarm=False, force=False,
                 oPDFEOF.parse(char)
 
             byte = oBinaryFile.byte()
-        (word, wordExact, hexcode, lastName, insideStream) = UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut, active_keywords)
+        (word, wordExact, hexcode, lastName, insideStream) = UpdateWords(word, wordExact, slash, words, hexcode, allNames, lastName, insideStream, oEntropy, fOut)
     except:
-        #[PL] when used as a module, it's better not to hide exceptions:
-        if raise_exceptions:
-            raise
         attErrorOccured.nodeValue = 'True'
         attErrorMessage.nodeValue = traceback.format_exc()
 
@@ -554,15 +537,6 @@ def PDFiD(file, allNames=False, extraData=False, disarm=False, force=False,
         att = xmlDoc.createAttribute('Name')
         att.nodeValue = date[1]
         eleDate.setAttributeNode(att)
-    #[PL] if requested, return if PDF was cleaned:
-    if return_cleaned:
-        #print words
-        cleaned=False
-        for active_keyword in ("/JS", "/JavaScript", "/AA", "/OpenAction"):
-            if words[active_keyword][0]:
-                cleaned=True
-                break
-        return xmlDoc, cleaned
     return xmlDoc
 
 def PDFiD2String(xmlDoc, force):

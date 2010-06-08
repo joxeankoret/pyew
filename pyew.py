@@ -24,10 +24,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import sys
 import pprint
+import sqlite3
 import StringIO
 
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
-from config import PLUGINS_PATH
+from config import PLUGINS_PATH, DATABASE_PATH
 
 try:
     import psyco
@@ -117,15 +118,92 @@ def showHelp(pyew):
     print "Any other expression will be evaled as a Python expression"
     print
 
-def main(filename):
+def createSchema(db):
+    try:
+        sql = """create table samples (id integer not null primary key,
+                                       md5, sha1, sha256, filename, type)"""
+        db.execute(sql)
+        
+        sql = """create table function_stats (
+                        id integer not null primary key,
+                        sample_id, addr, nodes, edges, cc)"""
+        db.execute(sql)
+        
+        sql = """create table antidebugs (
+                        id integer not null primary key,
+                        sample_id, addr, mnemonic
+                        )"""
+        db.execute(sql)
+    except:
+        pass
 
+def saveSample(db, pyew, buf, amd5):
+    try:
+        asha1 = sha1(buf).hexdigest()
+        asha256 = sha256(buf).hexdigest()
+        name = pyew.filename
+        format = pyew.format
+        
+        cur = db.cursor()
+        sql = """ insert into samples (md5, sha1, sha256, filename, type)
+                               values (?, ?, ?, ?, ?)"""
+        cur.execute(sql, (amd5, asha1, asha256, name, format))
+        rid = cur.lastrowid
+        
+        sql = """ insert into function_stats (sample_id, addr, nodes, edges, cc)
+                                      values (?, ?, ?, ?, ?) """
+        for f in pyew.function_stats:
+            addr = "0x%08x" % f
+            nodes, edges, cc = pyew.function_stats[f]
+            cur.execute(sql, (rid, addr, nodes, edges, cc))
+        
+        sql = """ insert into antidebugs (sample_id, addr, mnemonic) values (?, ?, ?) """
+        for antidbg in pyew.antidebug:
+            addr, mnem = antidbg
+            addr = "0x%08x" % addr
+            cur.execute(sql, (rid, addr, mnem))
+        
+        db.commit()
+    except:
+        print sys.exc_info()[1]
+        pass
+
+def saveAndCompareInDatabase(pyew):
+    db = sqlite3.connect(DATABASE_PATH)
+    createSchema(db)
+    cur = db.cursor()
+    bcontinue = True
+    
+    try:
+        buf = pyew.getBuffer()
+        amd5 = md5(buf).hexdigest()
+        name = pyew.filename
+        sql = """ select * from samples where md5 = ? """
+        cur.execute(sql, (amd5, ))
+        
+        for row in cur.fetchall():
+            if row[4] != name:
+                print "NOTICE: File was previously analyzed (%s)" % row[4]
+            bcontinue = False
+        cur.close()
+        
+        if bcontinue:
+            saveSample(db, pyew, buf, amd5)
+    except:
+        print sys.exc_info()[1]
+        raise
+
+def main(filename):
     pyew = CPyew()
     if os.getenv("PYEW_DEBUG"):
         pyew.debug=True
     else:
         pyew.debug = False
-    
+
     pyew.loadFile(filename, "rb")
+
+    if pyew.format in ["PE", "ELF"]:
+        saveAndCompareInDatabase(pyew)
 
     pyew.offset = 0
     print pyew.hexdump(pyew.buf, pyew.hexcolumns)

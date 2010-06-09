@@ -4,7 +4,7 @@ import os
 import sys
 
 from pyew_core import CPyew
-from easygui import choicebox, fileopenbox, msgbox
+from plugins.easygui import choicebox, fileopenbox, msgbox
 
 def main(filename=None):
     if filename is None:

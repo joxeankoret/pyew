@@ -31,6 +31,7 @@ import urllib
 import operator
 import StringIO
 
+from config import CODE_ANALYSIS
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
 
 try:
@@ -143,7 +144,7 @@ class CPyew:
         self.batch = False
         self.antidebug = []
         self.virtual = False
-        self.codeanalysis = True
+        self.codeanalysis = CODE_ANALYSIS
         self.offset = 0
         self.previousoffset = []
         self.lastasmoffset = 0

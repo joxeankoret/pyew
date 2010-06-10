@@ -171,6 +171,7 @@ class CPyew:
         self.imports = {}
         self.exports = {}
         self.ep = 0
+        self.case = 'high'
         
         self.names = {}
         self.functions = {}
@@ -731,8 +732,12 @@ class CPyew:
                         #comment = "\t; Function %s" % self.names[i.offset]
                     else:
                         comment = ""
-                
-                ret += "0x%08x (%02x) %-20s %s%s\n" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
+
+                if self.case == 'high':
+                    ret += "0x%08x (%02x) %-20s %s%s\n" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
+                # if pyew.case is 'low' or wrong 
+                else:
+                    ret += "0x%08x (%02x) %-20s %s%s\n" % (i.offset, i.size, i.instructionHex, str(i.mnemonic).lower() + " " + str(ops).lower(), comment)
                 if str(i.mnemonic).lower().startswith("j") or str(i.mnemonic).lower() == "ret":
                     pos += 1
                     ret += "0x%08x " % i.offset + "-"*70 + "\n"

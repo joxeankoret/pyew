@@ -26,14 +26,14 @@
 </preference-set>
   <boolean id="import_live">1</boolean>
 </preference-set>
-<preference-set idref="0957f1ad-018c-4568-86f7-e5395e5bc2df/pdf_example.py">
+<preference-set idref="2dc4c035-95cb-4f9c-9913-a640c3566697">
 <preference-set id="Invocations">
 <preference-set id="default">
   <string id="cookieparams"></string>
   <string id="cwd"></string>
   <string id="documentRoot"></string>
   <string id="executable-params"></string>
-  <string relative="path" id="filename">pdf_example.py</string>
+  <string relative="path" id="filename">plugins/upload.py</string>
   <string id="getparams"></string>
   <string id="language">Python</string>
   <string id="mpostparams"></string>
@@ -48,6 +48,6 @@
   <string id="userEnvironment"></string>
 </preference-set>
 </preference-set>
-  <string id="lastInvocation">Project</string>
+  <string id="lastInvocation">default</string>
 </preference-set>
 </project>

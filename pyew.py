@@ -193,6 +193,27 @@ def saveAndCompareInDatabase(pyew):
         print sys.exc_info()[1]
         raise
 
+def setupAutoCompletion(pyew):
+
+    # Settings
+    commands = {"pyew": pyew}
+    # Plugins
+    for plugin in pyew.plugins:
+        commands[plugin.ljust(8)] = 0
+    # Crypto
+    cryptos = ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"]
+    for crypto in cryptos:
+        commands[crypto] = 0
+
+    try:
+        import rlcompleter
+
+        readline.set_completer(rlcompleter.Completer(commands).complete)
+        readline.parse_and_bind("tab: complete")
+    except:
+        pass
+
+
 def main(filename):
     pyew = CPyew()
     if os.getenv("PYEW_DEBUG"):
@@ -216,6 +237,9 @@ def main(filename):
     # Add global object's references for easier usage
     pe = pyew.pe
     elf = pyew.elf
+
+    # Set AutoCompletion
+    setupAutoCompletion(pyew)
 
     while 1:
         try:
@@ -412,7 +436,7 @@ def main(filename):
                     pyew.plugins[plg[0]](pyew)
                 else:
                     pyew.plugins[plg[0]](pyew, plg[1:])
-            elif cmd in ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"]:
+            elif cmd.lower().split(" ")[0] in ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"]:
                 func = eval(cmd)
                 print "%s: %s" % (cmd, func(pyew.getBuffer()).hexdigest())
             elif cmd.startswith("!"):

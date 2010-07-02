@@ -74,7 +74,7 @@ class Elf:
         sbase = self.hdrlen
 
         if len(initstr) > 0:
-            if os.path.exists(initstr):
+            if not '\000' in initstr and os.path.exists(initstr):
                 bytes = file(initstr, "rb").read()
                 self.myname = initstr
 

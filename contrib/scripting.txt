@@ -1,0 +1,90 @@
+Scripting
+---------
+
+This feature offers the option to pack a bunch of pyew commands and python code in a file in order to easily automate some tasks.
+
+Scripting in pyew can be used in two different forms. First one is creating a script that will be executed automatiacally every time pyew is run and that can be used to store default settings or start up actions to customize pyew behaviour. By default the script must be named 'runme.py' and has to be placed on pyew's root directory. This is an example of init script:
+
+----------------- code ----------------
+pyew.case='low'
+a
+s ep
+dis
+----------------- code ----------------
+
+This runme script sets asm to low case, analyzes code, seeks to Entry Point and runs disassembly. Also python code can be used:
+
+----------------- code ----------------
+print "I prefer low case ASM ;-)"
+pyew.case='low'
+a
+print "Seek to Entry Point"
+s ep
+pyew.bsize=64
+dis
+----------------- code ----------------
+
+The second option to run pyew scripts is by placing them under the 'scripts' directory and using the 'ls' command. This command can be run with or without arguments; when used without, it will list available scripts in the 'scripts' directory:
+
+----------------- code ----------------
+[0x00000000]> ls
+Scripts available:
+    sample_runme
+    mebroot
+----------------- code ----------------
+
+If used with an argument, it will be used as the script name to launch:
+
+----------------- code ----------------
+[0x00000000]> ls sample_runme
+I prefer lower case ASM :P
+
+Code Analysis ...
+                                                                                                    
+Seek to Entry Point
+
+0x00000bd0 ; FUNCTION start
+0x00000bd0 (02) 31ed                 xor ebp, ebp
+0x00000bd2 (01) 5e                   pop esi
+0x00000bd3 (02) 89e1                 mov ecx, esp
+0x00000bd5 (03) 83e4 f0              and esp, -0x10
+0x00000bd8 (01) 50                   push eax
+0x00000bd9 (01) 54                   push esp
+0x00000bda (01) 52                   push edx
+0x00000bdb (05) 68 c0d30408          push 0x804d3c0
+0x00000be0 (05) 68 d0d30408          push 0x804d3d0
+0x00000be5 (01) 51                   push ecx
+0x00000be6 (01) 56                   push esi
+0x00000be7 (05) 68 b08e0408          push 0x8048eb0
+0x00000bec (05) e8 53feffff          call 0x00000a44    ; 1 j___libc_start_main
+0x00000bf1 (01) f4                   hlt 
+0x00000bf2 (01) 90                   nop 
+0x00000bf3 (01) 90                   nop 
+0x00000bf4 (01) 90                   nop 
+0x00000bf5 (01) 90                   nop 
+0x00000bf6 (01) 90                   nop 
+0x00000bf7 (01) 90                   nop 
+0x00000bf8 (01) 90                   nop 
+0x00000bf9 (01) 90                   nop 
+0x00000bfa (01) 90                   nop 
+0x00000bfb (01) 90                   nop 
+0x00000bfc (01) 90                   nop 
+0x00000bfd (01) 90                   nop 
+0x00000bfe (01) 90                   nop 
+0x00000bff (01) 90                   nop 
+0x00000c00 (01) 55                   push ebp
+0x00000c01 (02) 89e5                 mov ebp, esp
+0x00000c03 (01) 53                   push ebx
+0x00000c04 (03) 83ec 04              sub esp, 0x4
+0x00000c07 (07) 803d e4000508 00     cmp byte [0x80500e4], 0x0
+0x00000c0e (02) 75 41                jnz 0x00000c51 ; 2 
+0x00000c0e ----------------------------------------------------------------------
+0x00000c10 (06) 8b15 e8000508        mov edx, [0x80500e8]
+0x00000c16 (05) b8 14ff0408          mov eax, 0x804ff14
+0x00000c1b (05) 2d 10ff0408          sub eax, 0x804ff10
+0x00000c20 (03) c1f8 02              sar eax, 0x2
+
+[0x00000bd0]> 
+----------------- code ----------------
+
+And that's all regarding pyew scripting. Now it's time for you to experiment and share your best scripts with us!

@@ -1,0 +1,6 @@
+print "I prefer lower case ASM :P"
+pyew.case='low'
+a
+print "Seek to Entry Point"
+s ep
+dis

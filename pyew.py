@@ -82,6 +82,7 @@ def showHelp(pyew):
     print "c/d/dis/pd                        Show disassembly"
     print "a                                 Do code analysis"
     print "r/repr                            Show string representation"
+    print "ls                                List scripts available or launch one if used with an argument"
     print "p                                 Print the buffer"
     print "buf                               Print as a python buffer"
     print "byte                              Print as a C byte array"
@@ -207,7 +208,7 @@ def setupAutoCompletion(pyew):
 
     try:
         import rlcompleter
-
+        
         readline.set_completer(rlcompleter.Completer(commands).complete)
         readline.parse_and_bind("tab: complete")
     except:
@@ -241,6 +242,12 @@ def main(filename):
     # Set AutoCompletion
     setupAutoCompletion(pyew)
 
+    # Check if there is runme.py file
+    if os.path.exists('runme.py'):
+        f = open('runme.py', 'r')
+        commands = f.readlines()
+        f.close()
+
     while 1:
         try:
             last_cmd = cmd
@@ -260,7 +267,11 @@ def main(filename):
             else:
                 prompt = "[0x%08x]> " % pyew.offset
             
-            cmd = raw_input(prompt)
+            try:
+                cmd = commands[0].rstrip()
+                commands.pop(0)
+            except:
+                cmd = raw_input(prompt)
             
             if cmd in ["", "b"] and (last_cmd in ["b", "x", "c", "d", "dump", "hexdump", "dis", "pd", "p", "r", "buf"] or last_cmd.isdigit()):
                 if cmd == "b":
@@ -451,6 +462,18 @@ def main(filename):
                 pyew = CPyew()
                 buf = oldpyew.getBytes(oldpyew.offset, oldpyew.maxsize)
                 pyew.loadFromBuffer(buf, oldpyew.filename + "[embed]")
+            elif cmd.split(" ")[0] in ["ls"]:
+                data = cmd.split(" ")
+                if len(data) == 2:
+                    #print "parsing script file:", data[1]
+                    f = open('scripts/' + data[1], 'r')
+                    commands = f.readlines()
+                    f.close()
+                else:
+                    scripts = os.listdir('scripts/')
+                    print "Scripts available:"
+                    for script in scripts:
+                        print "\t", script
             else:
                 if cmd.find("=") > -1 or cmd.startswith("print") or cmd.startswith("import "):
                     exec(cmd)

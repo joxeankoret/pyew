@@ -31,7 +31,7 @@ import urllib
 import operator
 import StringIO
 
-from config import CODE_ANALYSIS
+from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
 
 try:
@@ -267,7 +267,9 @@ class CPyew:
         self.filename = filename
         self.mode = mode
         
-        if self.filename.lower().startswith("http://") or self.filename.lower().startswith("ftp://"):
+        if self.filename.lower().startswith("http://") or \
+           self.filename.lower().startswith("https://") or \
+           self.filename.lower().startswith("ftp://"):
             self.physical = False
             tmp = urllib.urlopen(self.filename).read()
             self.f = StringIO.StringIO(tmp)
@@ -391,7 +393,9 @@ class CPyew:
         
         anal = CX86CodeAnalyzer(self, self.type)
         anal.doCodeAnalysis()
-        #self.createIntelFunctionsByPrologs()
+        if DEEP_CODE_ANALYSIS:
+            self.log("\nSearching typicall function's prologs...")
+            self.createIntelFunctionsByPrologs()
 
     def findFunctions(self, proc):
         if proc == "intel":
@@ -486,7 +490,7 @@ class CPyew:
         if self.codeanalysis:
             if self.processor == "intel":
                 self.findFunctions(self.processor)
-                if not imps:
+                if not imps or len(self.functions) <= 1:
                     self.createIntelFunctionsByPrologs()
 
     def loadPE(self):

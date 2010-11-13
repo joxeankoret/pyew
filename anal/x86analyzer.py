@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import sys
+import time
 
 class CX86BasicBlock:
     def __init__(self):
@@ -49,9 +50,13 @@ class CX86CodeAnalyzer:
 
         self.pyew = pyew
         self.pe = type
+        self.timeout = 300
+        self.start_time = 0
+        self.max_level = 500
 
     def doCodeAnalysis(self, ep=True, addr=None):
         try:
+            self.start_time = time.time()
             if ep:
                 self.mDoCodeAnalysis()
             else:
@@ -107,9 +112,13 @@ class CX86CodeAnalyzer:
             for bb in self.basic_blocks[func]:
                 nodes += 1
                 bbs += 1
+                i = 0
                 for ins in bb.instructions:
                     x = bb.instructions[ins]
                     if self.xrefs_to.has_key(x.offset):
+                        if i == 0:
+                            indegree += 1
+                        
                         if not x.offset in to_checked:
                             to_checked.append(x.offset)
                     if self.xrefs_from.has_key(x.offset) and \
@@ -118,8 +127,13 @@ class CX86CodeAnalyzer:
                            x.offset != bb.instructions.keys()[0]:
                             edges += 1
                         from_checked.append(x.offset)
+                    i += 1
+                
+                if self.xrefs_from.has_key(x.offset):
+                    outdegree += 1
             
-            cc = edges - nodes + 2
+            p = indegree + outdegree
+            cc = edges - nodes + p
             ccs.append(cc)
             
             self.function_stats[func] = (nodes, edges, cc)
@@ -206,7 +220,10 @@ class CX86CodeAnalyzer:
 
     def doAnalyzeFunction(self, offset, level=0):
         
-        if level >= 10:
+        if self.start_time != 0 and time.time() > self.start_time + self.timeout:
+            return
+        
+        if level >= self.max_level:
             return
         
         if offset in self.analyzed:
@@ -379,3 +396,6 @@ class CX86CodeAnalyzer:
         self.functions_address[name] = [offset, l.offset + offset]
         self.checking.remove(offset)
         self.analyzed.append(offset)
+        
+        if mnem.startswith("RET"):
+            self.addFunction(offset+l.size, tocheck=True)

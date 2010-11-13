@@ -55,9 +55,9 @@ class CVirusTotalScanner:
             else:
                 return
         else:
-            matches = re.findall("""\<td\>(.*)\<\/td\>\s\<td\>.*\<\/td\>\s\<td\>.*\<\/td\>\s\<td class=\"positivo\"\>(.*)\<\/td\>""",
-                                 data, re.MULTILINE or re.IGNORECASE)
             
+            matches = re.findall("""\<td\>(.*)\<\/td\>\s*\<td\>.*\<\/td\>\s*\<td\>.*\<\/td\>\s*\<td class=\"positive\"\>(.*)\<\/td\>""",
+                                 data, re.MULTILINE or re.IGNORECASE)
             self.matches = {}
             
             for match in matches:

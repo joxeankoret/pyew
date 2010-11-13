@@ -185,6 +185,7 @@ def saveAndCompareInDatabase(pyew):
         for row in cur.fetchall():
             if row[4] != name:
                 print "NOTICE: File was previously analyzed (%s)" % row[4]
+                print
             bcontinue = False
         cur.close()
         

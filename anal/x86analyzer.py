@@ -397,5 +397,5 @@ class CX86CodeAnalyzer:
         self.checking.remove(offset)
         self.analyzed.append(offset)
         
-        if mnem.startswith("RET"):
+        if mnem.startswith("RET") and False:
             self.addFunction(offset+l.size, tocheck=True)

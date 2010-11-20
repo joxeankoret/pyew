@@ -300,7 +300,7 @@ class CPyew:
                 self.loadElf()
             elif self.buf.startswith("\xB3\xF2\x0D\x0A"):
                 self.loadPython()
-            elif self.buf.startswith("%PDF-"):
+            elif self.buf[:255].find("%PDF-") > -1:
                 self.loadPDF()
             elif self.buf.startswith("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"):
                 self.loadOle2()

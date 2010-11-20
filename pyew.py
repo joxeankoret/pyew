@@ -23,10 +23,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
+import code
 import pprint
 import sqlite3
 import StringIO
 
+from binascii import unhexlify
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
 from config import PLUGINS_PATH, DATABASE_PATH
 
@@ -66,7 +68,7 @@ from pyew_core import CPyew
 
 PROGRAM="PYEW! A Python tool like radare or *iew"
 VERSION=0x01010200
-HUMAN_VERSION="1.1.2.0"
+HUMAN_VERSION="1.2.0.0"
 
 def showHelp(pyew):
     print PROGRAM, "0x%x" % VERSION, "(%s)" % HUMAN_VERSION
@@ -92,8 +94,12 @@ def showHelp(pyew):
     print "/r expr                           Search regular expression"
     print "/u expr                           Search unicode expression"
     print "/U expr                           Search unicode expression ignoring case"
+    print "edit                              Reopen the file for reading and writting"
+    print "wx data                           Write hexadecimal data to file"
+    print "wa data                           Write ASCII data to file"
     print "file                              Load as new file the buffer from the current offset"
     print "ret                               Return to the original file (use after 'file')"
+    print "interact                          Open an interactive Python console"
     print
     print "Cryptographic functions: md5, sha1, sha224, sha256, sha384, sha512"
     print
@@ -463,6 +469,11 @@ def main(filename):
                 pyew = CPyew()
                 buf = oldpyew.getBytes(oldpyew.offset, oldpyew.maxsize)
                 pyew.loadFromBuffer(buf, oldpyew.filename + "[embed]")
+            elif cmd == "interact":
+                code.interact(local=locals())
+            elif cmd == "edit":
+                pyew.loadFile(filename, "r+wb")
+                pyew.seek(0)
             elif cmd.split(" ")[0] in ["ls"]:
                 data = cmd.split(" ")
                 if len(data) == 2:
@@ -475,6 +486,15 @@ def main(filename):
                     print "Scripts available:"
                     for script in scripts:
                         print "\t", script
+            elif cmd.split(" ")[0] in ["wx", "wa"]:
+                if cmd.split(" ")[0] == "wx":
+                    data = unhexlify(cmd.split(" ")[1])
+                else:
+                    data = cmd.split(" ")[1]
+                
+                pyew.f.seek(pyew.offset)
+                pyew.f.write(data)
+                pyew.seek(pyew.offset)
             else:
                 if cmd.find("=") > -1 or cmd.startswith("print") or cmd.startswith("import "):
                     exec(cmd)

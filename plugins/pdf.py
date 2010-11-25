@@ -3,7 +3,7 @@
 """
 This file is part of Pyew
 
-Copyright (C) 2009, Joxean Koret
+Copyright (C) 2009, 2010 Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -310,7 +310,7 @@ def pdfViewStreams(pyew, doprint=True, stream_id=-1, gui=False):
                         if filter == "FlateDecode":
                             tmp = zlib.decompress(tmp.strip("\r").strip("\n"))
                         elif filter == "ASCIIHexDecode":
-                            tmp = binascii.unhexlify(tmp.replace("\r", "").replace("\n", "").strip("<").strip(">"))
+                            tmp = binascii.unhexlify(tmp.replace("\r", "").replace("\n", "").replace(" ", "").strip("<").strip(">"))
                         elif filter == "ASCII85Decode":
                             tmp = ASCII85Decode(tmp.strip("\r").strip("\n"))
                         elif filter == "RunLengthDecode":

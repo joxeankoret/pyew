@@ -67,7 +67,7 @@ except ImportError:
 from pyew_core import CPyew
 
 PROGRAM="PYEW! A Python tool like radare or *iew"
-VERSION=0x01010200
+VERSION=0x01020000
 HUMAN_VERSION="1.2.0.0"
 
 def showHelp(pyew):
@@ -396,7 +396,7 @@ def main(filename):
                         line = ""
                 
                 if line != "":
-                    print "{%s}" % line
+                    print "%s" % line
             elif cmd.lower().split(" ")[0] in ["r", "repr"]:
                 print repr(pyew.buf)
             elif cmd.lower().split(" ")[0] in ["p"]:
@@ -472,7 +472,8 @@ def main(filename):
             elif cmd == "interact":
                 code.interact(local=locals())
             elif cmd == "edit":
-                pyew.loadFile(filename, "r+wb")
+                pyew.f.close()
+                pyew.f = open(filename, "r+wb")
                 pyew.seek(0)
             elif cmd.split(" ")[0] in ["ls"]:
                 data = cmd.split(" ")

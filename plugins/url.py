@@ -3,7 +3,7 @@
 """
 This file is part of Pyew
 
-Copyright (C) 2009, Joxean Koret
+Copyright (C) 2009, 2010 Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ def urlExtract(pyew, doprint=True):
     """ Search URLs in the current document """
 
     urlfinders = [
-        re.compile("((http|ftp|mailto|telnet|ssh)(s){0,1}\:\/\/[\w|\/|\.|\#|\?|\&|\=|\%]+)+", re.IGNORECASE | re.MULTILINE)
+        re.compile("((http|ftp|mailto|telnet|ssh)(s){0,1}\:\/\/[\w|\/|\.|\#|\?|\&|\=|\-|\%]+)+", re.IGNORECASE | re.MULTILINE)
     ]
 
     moffset = pyew.offset
@@ -105,7 +105,7 @@ def checkUrls(pyew, doprint=True):
                 sys.stdout.write("OK\n")
                 sys.stdout.flush()
             
-            oks.appen(url)
+            oks.append(url)
         except KeyboardInterrupt:
             print "Aborted"
             break

@@ -3,7 +3,7 @@
 """
 Pyew! A Python Tool like the populars *iew
 
-Copyright (C) 2009, Joxean Koret
+Copyright (C) 2009,2010 Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@ import peutils
 
 def checkPacker(pyew, doprint=True):
     """ Check if the PE file is packed """
+    if pyew.pe is None:
+        return
+    
     sig = peutils.SignatureDatabase(os.path.join(os.path.dirname(__file__), "UserDB.TXT"))
     matches = sig.match_all(pyew.pe, ep_only = True)
     if not matches:

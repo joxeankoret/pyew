@@ -56,6 +56,8 @@ except:
     except:
         pass
 
+from anal.x86analyzer import CX86CodeAnalyzer
+
 from config import PLUGINS_PATH
 
 FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
@@ -67,18 +69,17 @@ def to_unicode(buf):
     return ret
 
 class CDisObj:
-    offset = None
-    size = None
-    mnemonic = None
-    instructionHex = None
-    operands = None
+    def __init__(self):
+        self.offset = None
+        self.size = None
+        self.mnemonic = None
+        self.instructionHex = None
+        self.operands = None
 
 class EUnknownDisassemblyType(Exception):
     pass
 
 class CStrings:
-    buf = None
-
     def __init__(self, buf=None):
         self.buf = buf
 
@@ -93,9 +94,10 @@ class CStrings:
 
 class COffsetString:
     
-    buf = None
-    minsize = 3
-    offset = 4
+    def __init__(self):
+        self.buf = None
+        self.minsize = 3
+        self.offset = 4
     
     def searchForStringAt(self, i):
         initial = i
@@ -229,19 +231,21 @@ class CPyew:
 
     def getVirtualAddressFromOffset(self, offset):
         ret = None
-        
         if self.format == "PE":
             try:
-                ret = self.pe.OPTIONAL_HEADER.ImageBase + self.pe.get_rva_from_offset(self.offset)
+                ret = self.pe.OPTIONAL_HEADER.ImageBase + self.pe.get_rva_from_offset(offset)
             except:
                 pass
+        elif self.format == "ELF":
+            # XXX: FIXME!!!
+            ret = offset
         
         return ret
 
     def getOffsetFromVirtualAddress(self, va):
         if self.format == "PE":
             try:
-                ret = self.pe.get_offset_from_rva(va)
+                ret = self.pe.get_offset_from_rva(va-self.pe.OPTIONAL_HEADER.ImageBase)
             except:
                 print sys.exc_info()[1]
                 return None
@@ -306,6 +310,8 @@ class CPyew:
                 self.loadOle2()
         except:
             print "Error loading file:", sys.exc_info()[1]
+            if self.debug:
+                raise
 
     def loadPDF(self):
         self.format = "PDF"
@@ -333,7 +339,7 @@ class CPyew:
     
     def createIntelFunctionsByPrologs(self):
         total = 0
-        from anal.x86analyzer import CX86CodeAnalyzer
+        
         anal=CX86CodeAnalyzer(self)
         anal.antidebug = self.antidebug
         anal.names.update(self.functions)
@@ -349,28 +355,20 @@ class CPyew:
             prologs = ["8bff558b", "5589e5"]
         else:
             prologs = ["40554883ec"]
-        
+        hints = []
         for prolog in prologs:
-            hints = self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
-        
+            hints += self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
+        self.log("\b"*80 + "Found %d possible function(s) using method #1" % len(hints) + " "*20 + "\b"*80)
         for hint in hints:
             anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
-            """if not self.names.has_key(hint.keys()[0]):
-                total += 1
-                self.names[hint.keys()[0]] = "sub_%08x" % hint.keys()[0]"""
         
-        if total == 0:
-            prologs = ["558bec"]
-            for prolog in prologs:
-                hints = self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
-            
-            for hint in hints:
-                anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
-                """
-                if not self.names.has_key(hint.keys()[0]):
-                    total += 1
-                    self.names[hint.keys()[0]] = "sub_%08x" % hint.keys()[0]
-                """
+        prologs = ["558bec"]
+        for prolog in prologs:
+            hints += self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
+        self.log("\b"*80 + "Found %d possible function(s) using method #2" % len(hints) + " "*20)
+        for hint in hints:
+            anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
+        self.log("\n")
 
     def resolveName(self, ops):
         orig = str(ops)
@@ -389,12 +387,11 @@ class CPyew:
             return orig
 
     def findIntelFunctions(self):
-        from anal.x86analyzer import CX86CodeAnalyzer
-        
         anal = CX86CodeAnalyzer(self, self.type)
         anal.doCodeAnalysis()
+        
         if DEEP_CODE_ANALYSIS:
-            self.log("\nSearching typicall function's prologs...")
+            self.log("\b"*80 + "Searching typical function's prologs..." + " "*20)
             self.createIntelFunctionsByPrologs()
 
     def findFunctions(self, proc):
@@ -674,7 +671,9 @@ class CPyew:
                 comment = ""
                 func = ""
                 
-                if str(i.mnemonic).lower() in ["call"] or str(i.mnemonic).lower().startswith("j"):
+                if str(i.mnemonic).lower().startswith("call") or \
+                   str(i.mnemonic).lower().startswith("j") or \
+                   str(i.mnemonic).lower().startswith("loop"):
                     try:
                         if str(i.operands).startswith("["):
                             ops = str(i.operands).replace("[", "").replace("]", "")
@@ -742,7 +741,9 @@ class CPyew:
                 # if pyew.case is 'low' or wrong 
                 else:
                     ret += "0x%08x (%02x) %-20s %s%s\n" % (i.offset, i.size, i.instructionHex, str(i.mnemonic).lower() + " " + str(ops).lower(), comment)
-                if str(i.mnemonic).lower().startswith("j") or str(i.mnemonic).lower() == "ret":
+                if str(i.mnemonic).lower().startswith("j") or \
+                   str(i.mnemonic).lower() == "ret" or \
+                   str(i.mnemonic).lower().find("loop") > -1:
                     pos += 1
                     ret += "0x%08x " % i.offset + "-"*70 + "\n"
                 

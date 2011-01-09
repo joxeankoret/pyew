@@ -115,7 +115,7 @@ class CX86CodeAnalyzer:
         if self.start_time != 0 and time.time() > self.start_time + self.timeout:
             return
         
-        if addr in self.analyzed:
+        if addr in self.analyzed or addr in self.functions:
             #print "Function %08x already analyzed" % addr
             return
         
@@ -378,6 +378,7 @@ class CX86CodeAnalyzer:
         self.pyew.antidebug = self.antidebug
         self.pyew.names.update(self.functions)
         self.pyew.names.update(self.names)
+        self.pyew.names[self.pyew.ep] = "start"
         
         try:
             for exp in self.pyew.pe.DIRECTORY_ENTRY_EXPORT.symbols:

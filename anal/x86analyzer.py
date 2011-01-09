@@ -45,6 +45,7 @@ class CX86BasicBlock(object):
         self.instructions = []
         self.inrefs = []
         self.connections = []
+        self.offset = 0
     
     def addConnection(self, afrom, ato):
         if (afrom, ato) not in self.connections:
@@ -122,6 +123,7 @@ class CX86CodeAnalyzer:
         f = CX86Function(addr)
         lines = self.pyew.disasm(addr, self.pyew.processor, self.pyew.type, 100, 1500)
         bb = CX86BasicBlock()
+        bb.offset = addr
         flow = []
         
         # Possible values for break_bb are:
@@ -152,6 +154,7 @@ class CX86CodeAnalyzer:
                     if l.offset in self.basic_blocks:
                         lines = []
                         if len(bb.instructions) > 0:
+                            bb.addConnection(bb.instructions[-1].offset, l.offset)
                             # Save the current basic block
                             f.basic_blocks.append(bb)
                             self.basic_blocks[bb.instructions[0].offset] = bb
@@ -180,6 +183,9 @@ class CX86CodeAnalyzer:
             # Does the address belong to any already analyzed basic block?
             if not self.basic_blocks.has_key(l.offset):
                 bb.instructions.append(l)
+            
+            if bb.offset == 0:
+                bb.offset = l.offset
             
             mnem = str(l.mnemonic).upper()
             # Set the current offset as already analyzed
@@ -298,7 +304,7 @@ class CX86CodeAnalyzer:
 
     def calculateFunctionStats(self, addr):
         if not self.functions.has_key(addr):
-            raw_input("Function doesn't exists?")
+            #raw_input("Function doesn't exists?")
             return
         
         for bb in self.functions[addr].basic_blocks:
@@ -312,7 +318,10 @@ class CX86CodeAnalyzer:
         self.function_stats[addr] = (nodes, edges, cc)
 
     def analyzeArea(self, addr):
-        self.queue = [addr]
+        if len(self.queue) == 0:
+            self.queue = [addr]
+        else:
+            self.queue.append(addr)
         
         while addr is not None and len(self.queue) > 0:
             addr = self.queue.pop()
@@ -350,6 +359,13 @@ class CX86CodeAnalyzer:
         return True
 
     def analyzeEntryPoint(self):
+        try:
+            exports = self.pyew.exports
+            self.queue = self.pyew.exports.keys()
+        except:
+            # Just ignore the exception
+            pass
+        
         self.analyzeArea(self.pyew.ep)
 
     def doCodeAnalysis(self, ep=True, addr=None):
@@ -362,6 +378,21 @@ class CX86CodeAnalyzer:
         self.pyew.antidebug = self.antidebug
         self.pyew.names.update(self.functions)
         self.pyew.names.update(self.names)
+        
+        try:
+            for exp in self.pyew.pe.DIRECTORY_ENTRY_EXPORT.symbols:
+                try:
+                    addr = self.pyew.pe.get_offset_from_rva(exp.address)
+                except:
+                    addr = exp.address
+                
+                if exp.name and exp.name != "":
+                    self.pyew.names[addr] = exp.name
+                else:
+                    self.pyew.names[addr] = expordinal
+        except:
+            pass
+        
         self.pyew.functions = self.functions
         self.pyew.xrefs_to = self.xrefs_to
         self.pyew.xrefs_from = self.xrefs_from
@@ -401,7 +432,7 @@ class CX86CodeAnalyzer:
         if self.pyew.debug:
             print 
             print "Ciclomatic Complexity -> Max %d Min %d Media %2.2f" % (max(ccs), min(ccs), sum(ccs)/len(ccs)*1.00)
-            print "Total functions %d Total basic blocks %d" % (len(self.functions), bbs)
+            print "Total functions %d Total basic blocks %d" % (len(self.functions), len(nodes))
         
         return hash
 

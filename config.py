@@ -3,6 +3,6 @@
 import os
 
 CODE_ANALYSIS=True
-DEEP_CODE_ANALYSIS=False
+DEEP_CODE_ANALYSIS=True
 PLUGINS_PATH=os.path.dirname(__file__) + os.sep + "plugins"
 DATABASE_PATH=os.path.dirname(__file__) + os.sep + "files.sqlite"

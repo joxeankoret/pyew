@@ -29,7 +29,7 @@ def checkPacker(pyew, doprint=True):
     """ Check if the PE file is packed """
     if pyew.pe is None:
         return
-    
+
     sig = peutils.SignatureDatabase(os.path.join(os.path.dirname(__file__), "UserDB.TXT"))
     matches = sig.match_all(pyew.pe, ep_only = True)
     if not matches:

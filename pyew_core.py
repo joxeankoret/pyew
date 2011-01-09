@@ -147,6 +147,7 @@ class CPyew:
         self.antidebug = []
         self.virtual = False
         self.codeanalysis = CODE_ANALYSIS
+        self.deepcodeanalysis = DEEP_CODE_ANALYSIS
         self.offset = 0
         self.previousoffset = []
         self.lastasmoffset = 0
@@ -390,7 +391,7 @@ class CPyew:
         anal = CX86CodeAnalyzer(self, self.type)
         anal.doCodeAnalysis()
         
-        if DEEP_CODE_ANALYSIS:
+        if self.deepcodeanalysis:
             self.log("\b"*80 + "Searching typical function's prologs..." + " "*20)
             self.createIntelFunctionsByPrologs()
 

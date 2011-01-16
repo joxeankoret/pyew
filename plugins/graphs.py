@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
+import thread
 import tempfile
 import webbrowser
 
@@ -71,23 +72,29 @@ class CCallGraphGenerator(object):
                     
         return dot.generateDot()
 
+def showDotInXDot(buf):
+    try:    
+        import gtk, thread
+        from xdot import DotWindow
+        
+        win = DotWindow()
+        win.connect('destroy', gtk.main_quit)
+        win.set_filter("dot")
+        win.set_dotcode(buf)
+        try:
+            thread.start_new_thread(gtk.main, None)
+        except:
+            pass
+    except ImportError:
+        print "Python-GTK is not installed"
+
 def showCallGraph(pyew, doprint=True, addr=None):
     """ Show the callgraph of the whole program """
     dot = CCallGraphGenerator(pyew)
     buf = dot.generateDot()
 
     if doprint:
-        try:    
-            import gtk
-            from xdot import DotWindow
-            
-            win = DotWindow()
-            win.connect('destroy', gtk.main_quit)
-            win.set_filter("dot")
-            win.set_dotcode(buf)
-            gtk.main()
-        except ImportError:
-            print "Python-GTK is not installed"
+        showDotInXDot(buf)
 
     return buf
 

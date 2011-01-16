@@ -452,7 +452,9 @@ class Elf:
                     if self.bits == 32:
                         reloc = Elf32Reloca(bytes)
                     else:
-                        raise "FIXME"
+                        print "WARNING: 64bits ELF programs aren't supported yet"
+                        return
+                    
                     index = reloc.getSymTabIndex()
                     try:
                         sym = self.dynamic_symbols[index]

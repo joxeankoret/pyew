@@ -112,7 +112,7 @@ class CX86CodeAnalyzer:
             self.xrefs_from[afrom] = [ato]
 
     def createFunction(self, addr):
-        if self.start_time != 0 and time.time() > self.start_time + self.timeout:
+        if self.timeout != 0 and time.time() > self.start_time + self.timeout:
             return
         
         if addr in self.analyzed or addr in self.functions:
@@ -324,6 +324,10 @@ class CX86CodeAnalyzer:
             self.queue.append(addr)
         
         while addr is not None and len(self.queue) > 0:
+            if self.timeout != 0 and time.time() > self.start_time + self.timeout:
+                print "Timeout", self.start_time, self.timeout
+                break
+            
             addr = self.queue.pop()
             if addr not in self.analyzed:
                 #print "Creating function 0x%08x" % addr

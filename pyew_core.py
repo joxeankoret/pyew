@@ -31,7 +31,7 @@ import urllib
 import operator
 import StringIO
 
-from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS
+from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
 
 try:
@@ -188,6 +188,8 @@ class CPyew:
         self.antidebug = []
         self.function_stats = {}
         self.basic_blocks = {}
+        self.analysis_timeout = CONFIG_ANALYSIS_TIMEOUT
+        self.warnings = []
         
         self.batch = batch
         self.loadPlugins()
@@ -342,6 +344,7 @@ class CPyew:
         total = 0
         
         anal=CX86CodeAnalyzer(self)
+        anal.timeout = self.analysis_timeout
         anal.antidebug = self.antidebug
         anal.names.update(self.functions)
         anal.names.update(self.names)
@@ -389,6 +392,7 @@ class CPyew:
 
     def findIntelFunctions(self):
         anal = CX86CodeAnalyzer(self, self.type)
+        anal.timeout = self.analysis_timeout
         anal.doCodeAnalysis()
         
         if self.deepcodeanalysis:
@@ -463,8 +467,9 @@ class CPyew:
                     self.imports[imp.address] = str(entry.dll) + "!" + str(name)
             imps = True
         except:
-            print "***Error loading imports", sys.exc_info()[1]
-            pass
+            if not self.batch:
+                print "***Error loading imports", sys.exc_info()[1]
+            self.warnings.append("Error loading imports: %s" % sys.exc_info()[1])
             
         try:
             addr = None
@@ -588,6 +593,13 @@ class CPyew:
             if N>=bsize:
                 break
         return result
+
+    def belongToSection(self, x):
+        if self.format == "PE":
+            for s in self.pe.sections:
+                if x >= s.VirtualAddress and x <= s.VirtualAddress + s.SizeOfRawData:
+                    return s
+            return None
 
     def getDisassembleObject(self, obj, idx=0):
         if type(obj) is tuple:

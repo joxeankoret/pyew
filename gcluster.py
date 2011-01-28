@@ -50,7 +50,76 @@ class CAdjacencyList(object):
         self.adjacency_lists = {}
 
     def createAdjacencyList(self, pyew):
-        pass
+        al = []
+        ep = pyew.ep
+        try:
+            l = pyew.exports.keys()
+            l.append(pyew.ep)
+        except:
+            print "Error:", sys.exc_info()[1]
+            l = [pyew.ep]
+        functions = []
+        
+        for ep in l:
+            if pyew.functions.has_key(ep):
+                fep = pyew.functions[ep]
+                for c in fep.connections:
+                    if c in pyew.functions:
+                        if c not in functions:
+                            functions.append(c)
+                        
+                        al.append((pyew.function_stats[ep], pyew.function_stats[c]))
+        
+        dones = []
+        while len(functions) > 0:
+            addr = functions.pop()
+            f = pyew.functions[addr]
+            for c in f.connections:
+                if c in pyew.functions and c not in dones:
+                    functions.append(c)
+                    dones.append(c)
+                    
+                    al.append((pyew.function_stats[addr], pyew.function_stats[c]))
+        
+        return al
+
+    def getSimilarity(self, s1, s2):
+        m = max(len(s1), len(s2))
+        
+        diff1 = len(s1.difference(s2))
+        diff2 = len(s2.difference(s1))
+        diff = (diff1 + diff2)*100./m
+        
+        simil1 = len(s1.intersection(s2))
+        simil = simil1*100. / m
+        
+        metric = simil + diff
+        diff = diff * 100. / metric
+        
+        return diff
+
+    def compareTwoSets(self, set1, set2):
+        pyew1 = set1.values()[0]
+        pyew2 = set2.values()[0]
+        al1 = self.createAdjacencyList(pyew1)
+        al2 = self.createAdjacencyList(pyew2)
+        
+        if al1 == al2:
+            return 0
+        else:
+            s1 = set(al1)
+            s2 = set(al2)
+            diff = len(s1.difference(s2)) + len(s2.difference(s1))
+            total = max(len(s1), len(s2))
+            simil = diff * 100. / total
+            
+            return simil
+
+    def cluster(self):
+        if len(self.data) == 2:
+            set1 = self.data[0]
+            set2 = self.data[1]
+            return self.compareTwoSets(set1, set2)
 
 class CPrimesCluster(object):
     def __init__(self, data):
@@ -172,7 +241,7 @@ class CExpertCluster(object):
 class CGraphCluster(object):
     def __init__(self):
         self.clear()
-        self.deep = False
+        self.deep = True
         self.timeout = 0
 
     def addFile(self, filename):
@@ -194,7 +263,8 @@ class CGraphCluster(object):
             hash = sha256(pyew.getBuffer()).hexdigest()
             self.data.append({hash:pyew})
         else:
-            print "Not a PE/ELF file"
+            sys.stderr.writelines("Not a PE/ELF file")
+            sys.stderr.flush()
 
     def comparePrimes(self):
         cluster = CPrimesCluster(self.data)
@@ -204,6 +274,15 @@ class CGraphCluster(object):
             print "Primes system: Programs are 100% equals"
         else:
             print "Primes system: Programs differs in", val, "% percent"
+
+    def compareAdjacencyLists(self):
+        cluster = CAdjacencyList(self.data)
+        val = cluster.cluster()
+        
+        if val == 0:
+            print "ALists system: Programs are 100% equals"
+        else:
+            print "ALists System: Programs differs in %f%%" % val
 
     def compareExpert(self):
         cluster = CExpertCluster(self.data)
@@ -227,10 +306,12 @@ def main(prog1, prog2):
     cluster.processFiles()
     cluster.compareExpert()
     cluster.comparePrimes()
+    cluster.compareAdjacencyLists()
 
 def compareDirectory(path):
     cluster = CGraphCluster()
     cprimes = CPrimesCluster([])
+    alist = CAdjacencyList([])
 
     if os.path.isdir(path):
         for root, dirs, files in os.walk(path, topdown=False):
@@ -240,8 +321,8 @@ def compareDirectory(path):
     else:
         cluster.addFile(path)
     cluster.processFiles()
-    
-    print "hash:filename:primes_hash:nodes_total:nodes_max:nodes_avg:nodes_min:edges_total:edges_max:edges_avg:edges_min:ccs_total:ccs_max:ccs_avg:ccs_min:functions"
+
+    print "hash:filename:primes_hash:nodes_total:nodes_max:nodes_avg:nodes_min:edges_total:edges_max:edges_avg:edges_min:ccs_total:ccs_max:ccs_avg:ccs_min:functions:adjacency_list"
     for x in cluster.data:
         hash = x.keys()[0]
         pyew = x.values()[0]
@@ -249,7 +330,7 @@ def compareDirectory(path):
         for stat in pyew.program_stats:
             data = data + ":".join(map(str, pyew.program_stats[stat].values())).replace(".", ",") + ":"
         phash, dones = cprimes.generateHash(pyew)
-        print "%s:%s:%s:%s%d" % (hash, pyew.f.name, str(phash.as_integer_ratio()[0]), data, len(pyew.functions))
+        print "%s:%s:%s:%s%d:%s" % (hash, pyew.f.name, str(phash.as_integer_ratio()[0]), data, len(pyew.functions), str(alist.adjacency_lists(pyew)))
 
 def usage():
     print "Usage:", sys.argv[0], "<prog 1> <prog 2> | <directory>"

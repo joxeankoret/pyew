@@ -26,13 +26,17 @@ import os
 import sys
 import dis
 import time
+import pickle
 import pprint
 import urllib
 import operator
 import StringIO
 
+from gzip import GzipFile
+
 from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
+from safer_pickle import SafeUnpickler
 
 try:
     import pefile
@@ -176,6 +180,7 @@ class CPyew:
         self.ep = 0
         self.case = 'high'
         
+        self.database = None
         self.names = {}
         self.functions = {}
         self.functions_address = {}
@@ -299,6 +304,27 @@ class CPyew:
         self.buf = buf[:self.bsize]
         self.fileTypeLoad()
 
+    def saveDatabase(self, database):
+        self.database = database
+        try:
+            old_pyew = self
+            self.filename = old_pyew.f.name
+            self.f = None
+            self.plugins = {}
+            pickle.dump(self, GzipFile(database, "wb"))
+            self.f = old_pyew.f
+            self.plugins = old_pyew.plugins
+        except:
+            print "Error loading database: %s" % str(sys.exc_info()[1])
+            self = old_pyew
+
+    @staticmethod
+    def openDatabase(database, mode="rb"):
+        p = SafeUnpickler(GzipFile(database, "rb"))
+        new_pyew = p.load()
+        new_pyew.f = open(new_pyew.filename, mode)
+        return new_pyew
+
     def fileTypeLoad(self):
         try:
             if self.buf.startswith("MZ") and hasPefile:
@@ -339,7 +365,7 @@ class CPyew:
         self.log("Python Compiled File")
         self.log()
         self.processor="python"
-    
+
     def createIntelFunctionsByPrologs(self):
         total = 0
         
@@ -358,7 +384,7 @@ class CPyew:
         if self.type == 32:
             prologs = ["8bff558b", "5589e5"]
         else:
-            prologs = ["40554883ec"]
+            prologs = ["40554883ec", "554889e5"]
         hints = []
         for prolog in prologs:
             hints += self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
@@ -435,9 +461,10 @@ class CPyew:
         #self.log()
         
         self.log("Entry Point at 0x%x" % self.ep)
-        self.loadElfFunctions(self.elf)
+        if self.database is None:
+            self.loadElfFunctions(self.elf)
         self.log()
-    
+
     def loadElfFunctions(self, elf):
         try:
             for x in self.elf.relocs:
@@ -540,7 +567,9 @@ class CPyew:
                 self.ep = x
             except:
                 self.log(sys.exc_info()[1])
-            self.loadPeFunctions(self.pe)
+            
+            if self.database is None:
+                self.loadPeFunctions(self.pe)
             self.log()
         except:
             self.log("PEFILE:", sys.exc_info()[1])

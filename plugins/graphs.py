@@ -26,7 +26,11 @@ import thread
 import tempfile
 import webbrowser
 
-from PIL import Image
+try:
+    from PIL import Image
+    hasPil = True
+except ImportError:
+    hasPil = False
 
 from diagrams import CDotDiagram, CNode
 
@@ -124,6 +128,9 @@ def showBinaryImage(pyew, doprint=True):
 
     return filename
 
-functions = {"cgraph":showCallGraph,
+if hasPil:
+    functions = {"cgraph":showCallGraph,
              "binvi":showBinaryImage}
+else:
+    functions = {"cgraph":showCallGraph}
 

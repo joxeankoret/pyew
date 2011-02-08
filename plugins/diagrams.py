@@ -3,7 +3,6 @@
 import os
 import sys
 
-
 class CNode:
     name = None
     label = None

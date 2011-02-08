@@ -339,7 +339,7 @@ class CPyew:
                 self.loadOle2()
         except:
             print "Error loading file:", sys.exc_info()[1]
-            if self.debug:
+            if self.debug or self.batch:
                 raise
 
     def loadPDF(self):
@@ -520,7 +520,7 @@ class CPyew:
         if self.codeanalysis:
             if self.processor == "intel":
                 self.findFunctions(self.processor)
-                if not imps or len(self.functions) <= 1:
+                if not imps or len(self.functions) <= 1 and self.deepcodeanalysis:
                     self.createIntelFunctionsByPrologs()
 
     def loadPE(self):
@@ -572,6 +572,8 @@ class CPyew:
                 self.loadPeFunctions(self.pe)
             self.log()
         except:
+            if self.batch:
+                raise
             self.log("PEFILE:", sys.exc_info()[1])
             raise
 
@@ -584,15 +586,19 @@ class CPyew:
                 continue
             
             f = f.rstrip(".py")
-            m = __import__(f)
-            
-            if not "functions" in dir(m):
-                continue
-            
-            if self.plugins == {}:
-                self.plugins = m.functions
-            else:
-                self.plugins.update(m.functions)
+            try:
+                m = __import__(f)
+                
+                if not "functions" in dir(m):
+                    continue
+                
+                if self.plugins == {}:
+                    self.plugins = m.functions
+                else:
+                    self.plugins.update(m.functions)
+            except:
+                if self.debug:
+                    raise
 
     def seek(self, pos):
         if pos > self.maxsize:
@@ -674,7 +680,11 @@ class CPyew:
             self.calls = []
             i = None
             ilines = 0
-            buf = self.getBytes(offset, bsize)
+            try:
+                buf = self.getBytes(offset, bsize)
+            except OverflowError:
+                # OverflowError: long int too large to convert to int
+                return []
             
             for i in Decode(offset, buf, decode):
                 i = self.getDisassembleObject(i, ilines)

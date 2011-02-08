@@ -65,9 +65,10 @@ class CX86CodeAnalyzer:
         self.xrefs_to = {}
         self.xrefs_from = {}
         self.antidebug = []
+        self.timeout = None
         
-        self.last_msg_size = 0
         self.timeout = 300
+        self.last_msg_size = 0
         self.start_time = 0
 
     def belongsTo(self, offset, func):
@@ -113,7 +114,7 @@ class CX86CodeAnalyzer:
 
     def createFunction(self, addr):
         if self.timeout != 0 and time.time() > self.start_time + self.timeout:
-            return
+            raise Exception("Code analysis for x86 timed-out")
         
         if addr in self.analyzed or addr in self.functions:
             #print "Function %08x already analyzed" % addr
@@ -231,7 +232,8 @@ class CX86CodeAnalyzer:
                             self.queue.append(val)
                     elif mnem == "JMP":
                         # Follow the jump if resolvable
-                        if type(val) is int:
+                        #if type(val) is int:
+			if str(val).isdigit():
                             lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
                         else:
                             break_bb = 2
@@ -258,7 +260,8 @@ class CX86CodeAnalyzer:
                         break_bb = 2
                     else:
                         # Follow the jump if resolvable
-                        if type(val) is int:
+			if str(val).isdigit():
+                        #if type(val) is int:
                             lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
                         else:
                             break_bb = 2
@@ -325,8 +328,7 @@ class CX86CodeAnalyzer:
         
         while addr is not None and len(self.queue) > 0:
             if self.timeout != 0 and time.time() > self.start_time + self.timeout:
-                print "Timeout", self.start_time, self.timeout
-                break
+                raise Exception("Code analysis for x86 timed-out")
             
             addr = self.queue.pop()
             if addr not in self.analyzed:
@@ -442,10 +444,13 @@ class CX86CodeAnalyzer:
         return hash
 
 def test():
+    """
     sys.path.append("..")
     from pyew import CPyew
     pyew = CPyew(batch=False)
     pyew.loadFile("test.exe")
+    """
+    pass
 
 if __name__ == "__main__":
     test()

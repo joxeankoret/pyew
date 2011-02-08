@@ -107,7 +107,7 @@ def showBinaryImage(pyew, doprint=True):
 
     buf = pyew.getBuffer()
     size = len(buf)**(1./3)+1
-    img = Image.new("RGB", (size, size), "red")
+    img = Image.new("RGB", (int(size), int(size)), "red")
     putpixel = img.putpixel
     i = 0
 

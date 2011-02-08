@@ -241,7 +241,7 @@ class CExpertCluster(object):
 class CGraphCluster(object):
     def __init__(self):
         self.clear()
-        self.deep = True
+        self.deep = False
         self.timeout = 0
 
     def addFile(self, filename):
@@ -254,7 +254,7 @@ class CGraphCluster(object):
 
     def processFile(self, filename):
         #print "[+] Analyzing file %s" % filename
-        pyew = CPyew(batch=True)
+        pyew = CPyew(batch=False)
         pyew.deepcodeanalysis = self.deep
         pyew.analysis_timeout = 0
         pyew.loadFile(filename)

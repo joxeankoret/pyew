@@ -1,3 +1,54 @@
+Fixed minor bugs in code analysis. Fixed plugin loading system. It doesn't crash if you don't have any of the requirements. Added the "safe_unpickle.py" file that was missing in previous commits.
+	Today (12 minutes ago) 	
+Added very basic support for adjacency list clusterization to gcluster.py. Added support for loading and saving databases. Fixed a bug in plugin 'graphs.py'. Pyew crashes if module PIL wasn't installed. Small bug-fixes to code analysis engine for x86.
+	Jan 28, 2011 	
+Added tool gcluster.py to clusterize programs (ELF and PE).
+	Jan 23, 2011 	
+A warning is issued when opening ELF 64 files.
+	Jan 16, 2011 	
+Added command 'binvi' to show an image representing the contents of the file. Usefull to see different sections in a binary.
+	Jan 09, 2011 	
+Added 'xdot.py' to the package. Added the plugin 'graphs' to show the callgraph of the program.
+	Jan 09, 2011 	
+Fixed a bug with the deep code analysis.
+	Jan 09, 2011 	
+Minor code analysis fixes.
+	Jan 09, 2011 	
+Code analyzer for x86 completely rewritten from scratch. It's working OK now. Changed the copyright header adding the new date. Fixed a bug in the "packer" plugin. Fixed a bug in the PDF engine. Hexadecimal strings with spaces between the hexadecimal data caused Pyew to fail decoding it. Fixed a bug in the "url" plugin. URLs with a character "-" in the hostname weren't recognized. Fixed a lot of very stupid bugs in "pyew_core.py".
+	Nov 25, 2010 	
+Added command "edit" for opening the file in r+w mode. Added commands "wx" and "wa" to patch the file. Added command "interact" to open an interactive Python console.
+	Nov 20, 2010 	
+Fixed bugs in code analysis for x86. Fixed bug in VT module. Fixed bug opening URLs with SSL (https). Added support to search more functions during code analysis (x86).
+	Nov 13, 2010 	
+Scripting support files. Thanks Hugo!
+	Jul 02, 2010 	
+Added scripts support via Hugo Teso. Thanks!
+	Jul 02, 2010 	
+Applied patch from wamcvey for bug #6 loading ELF objects using binary strings.
+	Jul 02, 2010 	
+Added autocompletion support. Thanks to Hugo!
+	Jun 13, 2010 	
+Applied a small patch to show assembly code in upper case or lower case (depending on user's choice). Thanks to Hugo!
+	Jun 10, 2010 	
+Added the option to enable/disable code analysis. Thanks to Hugo!
+	Jun 10, 2010 	
+Fixed one small bug in the PDF example usage (pdf_example.py).
+	Jun 09, 2010 	
+Dirty hack to record in one SQLite database data about analyzed (PE/ELF) files.
+	Jun 08, 2010 	
+Fixed a small bug and added license header.
+	Jun 07, 2010 	
+Added a plugin to check PE's packers and fixed a minor bugs in the plugin loading mechanism.
+	Jun 07, 2010 	
+Updated PDFid to version 0.0.11. Added support to pass commands via command line to plugin's registered commands. Added the command "pdfstream", "pdfobj", "pdfso" and "pdfss" to list streams/objs and seek to the offset where the selected stream/obj is.
+	Jun 07, 2010 	
+Added the option to find x86 functions when analyzing memory dumps.
+	Jun 06, 2010 	
+Fixed a bug parsing PDF files when spaces are used after the stream word. Thanks to binjo.cn!
+	Mar 29, 2010 	
+A lot of fixes to the PDF plugins and engine (Thanks to scz <cloudsky [at] undisclosed >).
+	Mar 29, 2010 	
+
 Nov 24 2009 - Version 1.1.1 - Joxean Koret:
 
 	* Code analysis now works the way it's suppossed to work ;)

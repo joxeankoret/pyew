@@ -1,63 +1,246 @@
-Fixed minor bugs in code analysis. Fixed plugin loading system. It doesn't crash if you don't have any of the requirements. Added the "safe_unpickle.py" file that was missing in previous commits.
-	Today (12 minutes ago) 	
-Added very basic support for adjacency list clusterization to gcluster.py. Added support for loading and saving databases. Fixed a bug in plugin 'graphs.py'. Pyew crashes if module PIL wasn't installed. Small bug-fixes to code analysis engine for x86.
-	Jan 28, 2011 	
-Added tool gcluster.py to clusterize programs (ELF and PE).
-	Jan 23, 2011 	
-A warning is issued when opening ELF 64 files.
-	Jan 16, 2011 	
-Added command 'binvi' to show an image representing the contents of the file. Usefull to see different sections in a binary.
-	Jan 09, 2011 	
-Added 'xdot.py' to the package. Added the plugin 'graphs' to show the callgraph of the program.
-	Jan 09, 2011 	
-Fixed a bug with the deep code analysis.
-	Jan 09, 2011 	
-Minor code analysis fixes.
-	Jan 09, 2011 	
-Code analyzer for x86 completely rewritten from scratch. It's working OK now. Changed the copyright header adding the new date. Fixed a bug in the "packer" plugin. Fixed a bug in the PDF engine. Hexadecimal strings with spaces between the hexadecimal data caused Pyew to fail decoding it. Fixed a bug in the "url" plugin. URLs with a character "-" in the hostname weren't recognized. Fixed a lot of very stupid bugs in "pyew_core.py".
-	Nov 25, 2010 	
-Added command "edit" for opening the file in r+w mode. Added commands "wx" and "wa" to patch the file. Added command "interact" to open an interactive Python console.
-	Nov 20, 2010 	
-Fixed bugs in code analysis for x86. Fixed bug in VT module. Fixed bug opening URLs with SSL (https). Added support to search more functions during code analysis (x86).
-	Nov 13, 2010 	
-Scripting support files. Thanks Hugo!
-	Jul 02, 2010 	
-Added scripts support via Hugo Teso. Thanks!
-	Jul 02, 2010 	
-Applied patch from wamcvey for bug #6 loading ELF objects using binary strings.
-	Jul 02, 2010 	
-Added autocompletion support. Thanks to Hugo!
-	Jun 13, 2010 	
-Applied a small patch to show assembly code in upper case or lower case (depending on user's choice). Thanks to Hugo!
-	Jun 10, 2010 	
-Added the option to enable/disable code analysis. Thanks to Hugo!
-	Jun 10, 2010 	
-Fixed one small bug in the PDF example usage (pdf_example.py).
-	Jun 09, 2010 	
-Dirty hack to record in one SQLite database data about analyzed (PE/ELF) files.
-	Jun 08, 2010 	
-Fixed a small bug and added license header.
-	Jun 07, 2010 	
-Added a plugin to check PE's packers and fixed a minor bugs in the plugin loading mechanism.
-	Jun 07, 2010 	
-Updated PDFid to version 0.0.11. Added support to pass commands via command line to plugin's registered commands. Added the command "pdfstream", "pdfobj", "pdfso" and "pdfss" to list streams/objs and seek to the offset where the selected stream/obj is.
-	Jun 07, 2010 	
-Added the option to find x86 functions when analyzing memory dumps.
-	Jun 06, 2010 	
-Fixed a bug parsing PDF files when spaces are used after the stream word. Thanks to binjo.cn!
-	Mar 29, 2010 	
-A lot of fixes to the PDF plugins and engine (Thanks to scz <cloudsky [at] undisclosed >).
-	Mar 29, 2010 	
+changeset:   48:8cb31f108169
+tag:         tip
+user:        joxean
+date:        Tue Feb 08 13:27:43 2011 +0100
+summary:     Fixed ChangeLog.
 
-Nov 24 2009 - Version 1.1.1 - Joxean Koret:
+changeset:   47:d7266e3aa62b
+user:        joxean
+date:        Tue Feb 08 13:11:21 2011 +0100
+summary:     Fixed minor bugs in code analysis.
 
-	* Code analysis now works the way it's suppossed to work ;)
+changeset:   46:2e2e153fa9d0
+user:        joxean
+date:        Fri Jan 28 12:53:54 2011 +0100
+summary:     Added very basic support for adjacency list clusterization to gcluster.py.
 
-Nov 23 2009 - Version 1.1.0 - Joxean Koret:
+changeset:   45:42001c79074a
+user:        joxean
+date:        Sun Jan 23 18:39:17 2011 +0100
+summary:     Added tool gcluster.py to clusterize programs (ELF and PE).
 
-	* Added support for ELF format.
+changeset:   44:efece74099ba
+user:        joxean
+date:        Sun Jan 16 19:03:01 2011 +0100
+summary:     A warning is issued when opening ELF 64 files.
 
-Nov 22 2009 - Version 1.0.0 - Joxean Koret:
+changeset:   43:d34a2d2fda71
+user:        joxean
+date:        Sun Jan 09 23:21:33 2011 +0100
+summary:     Added command 'binvi' to show an image representing the contents of the file. Usefull to see different sections in a binary.
 
-	* Firt public release.
+changeset:   42:7b7a9cf5553b
+user:        joxean
+date:        Sun Jan 09 19:51:21 2011 +0100
+summary:     Added 'xdot.py' to the package.
+
+changeset:   41:a589fe203888
+user:        joxean
+date:        Sun Jan 09 19:49:07 2011 +0100
+summary:     Fixed a bug with the deep code analysis.
+
+changeset:   40:3a067ec66846
+user:        joxean
+date:        Sun Jan 09 19:27:57 2011 +0100
+summary:     Minor code analysis fixes.
+
+changeset:   39:c943c9f5a2f3
+user:        joxean
+date:        Thu Nov 25 13:21:51 2010 +0100
+summary:     Code analyzer for x86 completely rewritten from scratch. It's working OK now.
+
+changeset:   38:fda0c41de7ae
+user:        joxean
+date:        Sat Nov 20 11:46:11 2010 +0100
+summary:     Added command "edit" for opening the file in r+w mode.
+
+changeset:   37:b324cc74ace7
+user:        joxean
+date:        Sat Nov 13 09:43:43 2010 +0100
+summary:     Fixed bugs in code analysis for x86.
+
+changeset:   36:0e0ecce43c74
+user:        joxean@joxean-desktop.etxea.com
+date:        Fri Jul 02 22:59:00 2010 +0200
+summary:     Scripting support files. Thanks Hugo!
+
+changeset:   35:13d8bf9814f1
+user:        joxean@joxean-desktop.etxea.com
+date:        Fri Jul 02 22:58:20 2010 +0200
+summary:     Added scripts support via Hugo Teso. Thanks!
+
+changeset:   34:20f952f5878a
+user:        joxean@joxean-desktop.etxea.com
+date:        Fri Jul 02 22:51:28 2010 +0200
+summary:     Applied patch from wamcvey for bug #6 loading ELF objects using binary strings.
+
+changeset:   33:b75f0a060256
+user:        joxean@joxean-desktop.etxea.com
+date:        Mon Jun 14 07:56:22 2010 +0200
+summary:     Added autocompletion support. Thanks to Hugo!
+
+changeset:   32:deb907afc8d4
+user:        joxean@joxean-desktop.etxea.com
+date:        Thu Jun 10 19:49:09 2010 +0200
+summary:     Applied a small patch to show assembly code in upper case or lower case (depending on user's choice). Thanks to Hugo!
+
+changeset:   31:24f67bf0c3e8
+user:        joxean@joxean-desktop.etxea.com
+date:        Thu Jun 10 19:34:04 2010 +0200
+summary:     Added the option to enable/disable code analysis. Thanks to Hugo!
+
+changeset:   30:29279cfe5288
+user:        joxean@joxean-desktop.etxea.com
+date:        Wed Jun 09 19:36:02 2010 +0200
+summary:     Fixed one small bug in the PDF example usage (pdf_example.py).
+
+changeset:   29:73bbe41c8347
+user:        joxean@joxean-desktop.etxea.com
+date:        Tue Jun 08 23:43:28 2010 +0200
+summary:     Dirty hack to record in one SQLite database data about analyzed (PE/ELF) files.
+
+changeset:   28:5bbdaf7bb594
+user:        joxean@joxean-desktop.etxea.com
+date:        Tue Jun 08 07:59:46 2010 +0200
+summary:     Fixed a small bug and added license header.
+
+changeset:   27:222375536917
+user:        joxean@joxean-desktop.etxea.com
+date:        Mon Jun 07 21:47:13 2010 +0200
+summary:     Added a plugin to check PE's packers and fixed a minor bugs in the plugin loading mechanism.
+
+changeset:   26:b4ffb5bbe35c
+user:        joxean@joxean-desktop.etxea.com
+date:        Mon Jun 07 20:49:48 2010 +0200
+summary:     Updated PDFid to version 0.0.11.
+
+changeset:   25:69f5f718a1a8
+user:        joxean@joxean-desktop.etxea.com
+date:        Mon Jun 07 08:02:57 2010 +0200
+summary:     Added the option to find x86 functions when analyzing memory dumps.
+
+changeset:   24:2c32345ff698
+user:        joxean@joxean-desktop.etxea.com
+date:        Mon Mar 29 23:52:55 2010 +0200
+summary:     Fixed a bug parsing PDF files when spaces are used after the stream word. Thanks to binjo.cn!
+
+changeset:   23:9d8de69c155a
+user:        joxean@joxean-desktop.etxea.com
+date:        Mon Mar 29 23:49:15 2010 +0200
+summary:     A lot of fixes to the PDF plugins and engine (Thanks to scz <cloudsky [at] undisclosed >).
+
+changeset:   22:ab6e8cd4f40c
+user:        joxean@joxean-desktop.etxea.com
+date:        Sun Feb 21 15:44:13 2010 +0100
+summary:     Fixed various bugs in the PDF plugin.
+
+changeset:   21:66f965c0c455
+user:        joxean@joxean-desktop.etxea.com
+date:        Sat Feb 20 10:48:01 2010 +0100
+summary:     Fixed a problem loading malformed PDF files.
+
+changeset:   20:827fdb18a20c
+user:        joxean@joxean-desktop.etxea.com
+date:        Wed Feb 17 08:12:27 2010 +0100
+summary:     Fixed a lot of bugs in the code analysis.
+
+changeset:   19:95d56faa7cbb
+user:        joxean@joxean-desktop.etxea.com
+date:        Tue Dec 15 20:32:22 2009 +0100
+summary:     Added support for checking bad urls online (via www.malware.com.br).
+
+changeset:   18:322f82341b74
+user:        joxean@joxean-desktop.etxea.com
+date:        Sat Dec 12 18:28:40 2009 +0100
+summary:     Added a new batch example (batch_antidebug.py).
+
+changeset:   17:693960370e0f
+user:        joxean@joxean-desktop.etxea.com
+date:        Sat Dec 12 00:14:00 2009 +0100
+summary:     Fixed an small bug in the Virus Total module.
+
+changeset:   16:aca340aacbac
+user:        joxean@joxean-desktop.etxea.com
+date:        Sat Dec 12 00:05:49 2009 +0100
+summary:     Fixes for one infinite recursion bug in the code analysis.
+
+changeset:   15:e1b36450c8b6
+user:        joxean@joxean-desktop.etxea.com
+date:        Thu Dec 10 19:23:33 2009 +0100
+summary:     Added support for "offset strings", see the wiki for details.
+
+changeset:   14:9f10e3bcaba6
+user:        joxean@joxean-desktop.etxea.com
+date:        Thu Dec 10 08:06:53 2009 +0100
+summary:     Added an ugly bug fix for diStorm.
+
+changeset:   13:45a2755d8717
+user:        joxean@joxean-desktop.etxea.com
+date:        Thu Dec 10 08:01:58 2009 +0100
+summary:     Fixed bugs in the command line interface.
+
+changeset:   12:2d3fdd0a0617
+user:        joxean@joxean-desktop.etxea.com
+date:        Fri Dec 04 07:02:28 2009 +0100
+summary:     Fixed more bugs in the code analysis.
+
+changeset:   11:0af981595bbc
+user:        joxean@joxean-desktop.etxea.com
+date:        Wed Dec 02 21:37:55 2009 +0100
+summary:     Added the license header in x86analyzer.py.
+
+changeset:   10:948ce1e09926
+user:        joxean@joxean-desktop.etxea.com
+date:        Sun Nov 29 21:44:19 2009 +0100
+summary:     Fixed some bugs in the code analysis.
+
+changeset:   9:76160079b406
+user:        joxean@joxean-desktop.etxea.com
+date:        Fri Nov 27 22:29:29 2009 +0100
+summary:     Really fixed the bugs with the f* exports.
+
+changeset:   8:264d9f9f4b51
+user:        joxean@joxean-desktop.etxea.com
+date:        Fri Nov 27 22:17:18 2009 +0100
+summary:     Fixed a bug with the addressing of exported symbols.
+
+changeset:   7:08c1a055d79f
+user:        joxean@joxean-desktop.etxea.com
+date:        Fri Nov 27 21:56:12 2009 +0100
+summary:     Instructions like: MOV EAX, [OFFSET], are now displayed with a comment according to the corresponding function if any.
+
+changeset:   6:2463d0ead7dc
+user:        joxean@joxean-desktop.etxea.com
+date:        Fri Nov 27 00:28:30 2009 +0100
+summary:     Added support to check code refs from, code refs to and antidebugging (basic ones).
+
+changeset:   5:6e9e4a557566
+user:        joxean@joxean-desktop.etxea.com
+date:        Thu Nov 26 20:29:43 2009 +0100
+summary:     Fixed a bug searching for the physical offset of the entry point of PE files.
+
+changeset:   4:1587f5970c3b
+user:        joxean@joxean-desktop.etxea.com
+date:        Wed Nov 25 23:32:16 2009 +0100
+summary:     Bug fixes in the code analysis.
+
+changeset:   3:4f77c9375665
+user:        joxean@joxean-desktop.etxea.com
+date:        Wed Nov 25 21:43:35 2009 +0100
+summary:     Added a Komodo project file.
+
+changeset:   2:e94aa3ce1498
+user:        joxean@joxean-desktop.etxea.com
+date:        Wed Nov 25 21:25:55 2009 +0100
+summary:     Changed version number.
+
+changeset:   1:1187fd305c8b
+user:        joxean@joxean-desktop.etxea.com
+date:        Wed Nov 25 21:18:08 2009 +0100
+summary:     Fixed various bugs in the code analysis.
+
+changeset:   0:fc922bcca988
+user:        joxean@joxean-desktop.etxea.com
+date:        Wed Nov 25 21:13:10 2009 +0100
+summary:     Initial import.
 

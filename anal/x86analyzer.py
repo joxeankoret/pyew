@@ -233,7 +233,7 @@ class CX86CodeAnalyzer:
                     elif mnem == "JMP":
                         # Follow the jump if resolvable
                         #if type(val) is int:
-			if str(val).isdigit():
+                        if str(val).isdigit():
                             lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
                         else:
                             break_bb = 2
@@ -260,7 +260,7 @@ class CX86CodeAnalyzer:
                         break_bb = 2
                     else:
                         # Follow the jump if resolvable
-			if str(val).isdigit():
+                        if str(val).isdigit():
                         #if type(val) is int:
                             lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
                         else:

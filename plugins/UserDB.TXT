@@ -26603,3 +26603,7 @@ ep_only=True
 signature=B8 ?? ?? ?? 01 50 64 FF 35 00 00 00 00 64 89 25 00 00 00 00 33 C0 89 08 50 45 43 6F 6D 70 61 63 74 32 00
 ep_only=True
 
+[WinRAR SFX]
+signature=E8 E3 FE FF FF 33 C0 50 50 50 50 E8 BE 2B 00 00
+ep_only=True
+

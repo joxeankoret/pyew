@@ -80,14 +80,14 @@ class CVirusTotalScanner:
         if match:
             print
 
-def virusTotalSearch(pyew):
+def virusTotalSearch(pyew, doprint=True):
     """ Search the sample in Virus Total """
     buf = pyew.getBuffer()
     x = hashlib.md5(buf).hexdigest()
     
     scanner = CVirusTotalScanner()
-    scanner.printResults = True
-    scanner.scan(pyew.filename, argmd5=x)
+    scanner.printResults = doprint
+    return scanner.scan(pyew.filename, argmd5=x)
 
 functions={"vt":virusTotalSearch}
 

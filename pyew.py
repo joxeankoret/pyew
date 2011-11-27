@@ -78,6 +78,7 @@ def showHelp(pyew):
     print "?/help                            Show this help"
     print "x/dump/hexdump                    Show hexadecimal dump"
     print "s/seek                            Seek to a new offset"
+    print "v/vseek                           Seek a to virtual address (PE and ELF only)"
     print "b                                 Return to previous offset"
     print "g/G                               Goto BOF (g) or EOF (G)"
     print "+/-                               Go forward/backward one block (specified by pyew.bsize)"
@@ -99,7 +100,10 @@ def showHelp(pyew):
     print "wa data                           Write ASCII data to file"
     print "file                              Load as new file the buffer from the current offset"
     print "ret                               Return to the original file (use after 'file')"
-    print "interact                          Open an interactive Python console"
+    print "interact                          Open an interactive Python console"    
+    if pyew.has_debug:
+        print pyew.debugHelp()
+
     print
     print "Cryptographic functions: md5, sha1, sha224, sha256, sha384, sha512"
     print
@@ -280,7 +284,7 @@ def main(filename):
             except:
                 cmd = raw_input(prompt)
             
-            if cmd in ["", "b"] and (last_cmd in ["b", "x", "c", "d", "dump", "hexdump", "dis", "pd", "p", "r", "buf"] or last_cmd.isdigit()):
+            if cmd in ["", "b"] and (last_cmd in ["b", "x", "c", "d", "dump", "hexdump", "dis", "pd", "p", "r", "buf", "stepi"] or last_cmd.isdigit()):
                 if cmd == "b":
                     tmp = pyew.previousoffset.pop()
                     
@@ -308,6 +312,8 @@ def main(filename):
                     pyew.seek(pyew.offset)
                     if last_cmd.isdigit():
                         last_cmd = "c"
+                elif last_cmd in ["stepi"]:
+                    cmd = "stepi"
                 else:
                     pyew.offset = pyew.offset+pyew.bsize
                     pyew.seek(pyew.offset)
@@ -328,7 +334,8 @@ def main(filename):
                 print
             elif cmd.lower() in ["x", "dump", "hexdump"]:
                 print pyew.hexdump(pyew.buf, pyew.hexcolumns, baseoffset=pyew.offset)
-            elif cmd.split(" ")[0] in ["s", "seek"]:
+            elif cmd.split(" ")[0] in ["s", "seek", "v", "vseek"]:
+                virtual = cmd.split(" ")[0].startswith("v")
                 data = cmd.split(" ")
                 if len(data) > 1:
                     if data[1].lower() in ["ep", "entrypoint"]:
@@ -348,21 +355,27 @@ def main(filename):
                                     break
                         else:
                             pyew.offset = int(data[1])
-                        
-                pyew.seek(pyew.offset)
+                if virtual:
+                    pyew.vseek(pyew.offset)
+                else:
+                    pyew.seek(pyew.offset)
             elif cmd.lower().split(" ")[0] in ["c", "d", "dis", "pd"]:
                 data = cmd.lower().split(" ")
                 if len(data) > 1:
+                    if pyew.virtual:
+                        off = self.getVirtualAddressFromOffset(pyew.offset)
+                    else:
+                        off = pyew.offset
                     if not data[1].startswith("/"):
                         type = int(data[1])
-                        dis = pyew.disassemble(pyew.buf, pyew.processor, pyew.type, pyew.lines, pyew.bsize, baseoffset=pyew.offset)
+                        dis = pyew.disassemble(pyew.buf, pyew.processor, pyew.type, pyew.lines, pyew.bsize, baseoffset=off)
                         print dis
                     else:
                         cmd = data[1:]
                         if len(cmd) > 1:
-                            ret = pyew.dosearch(pyew.f, cmd[0][1:2], cmd[1], cols=60, doprint=False, offset=pyew.offset)
+                            ret = pyew.dosearch(pyew.f, cmd[0][1:2], cmd[1], cols=60, doprint=False, offset=off)
                         else:
-                            ret = pyew.dosearch(pyew.f, cmd[0][1:2], "", cols=60, doprint=False, offset=pyew.offset)
+                            ret = pyew.dosearch(pyew.f, cmd[0][1:2], "", cols=60, doprint=False, offset=off)
                         
                         for x in ret:
                             dis = pyew.disassemble(x.values()[0], pyew.processor, pyew.type, pyew.lines, pyew.bsize, baseoffset=x.keys()[0])
@@ -496,7 +509,19 @@ def main(filename):
                 pyew.f.seek(pyew.offset)
                 pyew.f.write(data)
                 pyew.seek(pyew.offset)
+            elif cmd.split(" ")[0] == "f":
+                if not 'names' in dir(pyew):
+                    print "No function found"
+                else:
+                    print "Function\tNodes\tEdges\tComplexity"
+                    for f in pyew.names:
+                        if pyew.function_stats.has_key(f) and not pyew.names[f].startswith("j_"):
+                            nodes, edges, cc = pyew.function_stats[f]
+                            print pyew.names[f].ljust(10), "\t", nodes, "\t", edges, "\t", cc
             else:
+                if pyew.has_debug and pyew.debugHandler(cmd):
+                    continue
+                
                 if cmd.find("=") > -1 or cmd.startswith("print") or cmd.startswith("import "):
                     exec(cmd)
                 else:

@@ -85,6 +85,7 @@ class CX86CodeAnalyzer:
     def resolveAddress(self, addr):
         addr = str(addr)
         if addr.find("[") > -1:
+            addr = addr.strip(" ")
             addr = addr.strip("[").strip("]")
             if addr.find("+") > -1 or addr.find("-") > -1:
                 return addr, False, True
@@ -92,6 +93,13 @@ class CX86CodeAnalyzer:
             name = self.pyew.resolveName(addr)
             if name in self._imports:
                 return addr, True, False
+        elif addr.find(",") > -1:
+            part = addr.split(",")
+            if len(part) == 2:
+                try:
+                    addr = int(part[1], 16)
+                except:
+                    return None, False, True
         else:
             try:
                 addr = int(addr, 16)
@@ -270,6 +278,18 @@ class CX86CodeAnalyzer:
                 # Break the basic block and clear 'lines', we don't want to
                 # continue analyzing the next assembler lines
                 break_bb = 2
+            elif mnem.startswith("MOV") or mnem.startswith("PUSH"):
+                if mnem == "PUSH":
+                    val, isimport, isbreak = self.resolveAddress(l.operands)
+                else:
+                    val, isimport, isbreak = self.resolveAddress(l.operands)
+                
+                if val is not None:
+                    addr = val
+                    if self.pyew.executableMemory(addr):
+                        offset = self.pyew.getOffsetFromVirtualAddress(addr)
+                        f.addOutConnection(offset)
+                        self.queue.append(offset)
             
             i += 1
             # Do we have to clear anything?

@@ -50,6 +50,12 @@ try:
 except ImportError:
     hasElf = False
 
+try:
+    from vtrace import vtrace
+    hasDebug = True
+except ImportError:
+    hasDebug = False
+
 from binascii import unhexlify, hexlify
 
 try:
@@ -60,9 +66,8 @@ except:
     except:
         pass
 
-from anal.x86analyzer import CX86CodeAnalyzer
-
 from config import PLUGINS_PATH
+from anal.x86analyzer import CX86CodeAnalyzer
 
 FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
 
@@ -196,12 +201,21 @@ class CPyew:
         self.analysis_timeout = CONFIG_ANALYSIS_TIMEOUT
         self.warnings = []
         
+        if hasDebug:
+            self.has_debug = True
+            self.loadDebugger()
+        else:
+            self.has_debug = False
+        
         self.batch = batch
         self.loadPlugins()
 
     def __del__(self):
         if self.f:
             self.f.close()
+        
+        if self.has_debug:
+            self.dbg.release()
 
     def log(self, msg=None, *args):
         if not self.batch:
@@ -245,20 +259,42 @@ class CPyew:
             except:
                 pass
         elif self.format == "ELF":
-            # XXX: FIXME!!!
             ret = offset
+            for x in self.elf.secnames:
+                if offset >= self.elf.secnames[x].sh_offset and offset < self.elf.secnames[x].sh_offset + self.elf.secnames[x].sh_size:
+                    rel = offset - self.elf.secnames[x].sh_offset
+                    ret = self.elf.secnames[x].sh_addr + rel
+                    break
         
         return ret
 
     def getOffsetFromVirtualAddress(self, va):
+        ret = None
         if self.format == "PE":
             try:
                 ret = self.pe.get_offset_from_rva(va-self.pe.OPTIONAL_HEADER.ImageBase)
             except:
                 print sys.exc_info()[1]
-                return None
+        elif self.format == "ELF":
+            for x in self.elf.secnames:
+                if va >= self.elf.secnames[x].sh_addr and va < self.elf.secnames[x].sh_addr + self.elf.secnames[x].sh_size:
+                    tmp = va - self.elf.secnames[x].sh_addr
+                    ret = self.elf.secnames[x].sh_offset + tmp
         
-        return None
+        return ret
+
+    def executableMemory(self, va):
+        ret = False
+        if self.format == "PE":
+            # FIXME
+            pass
+        elif self.format == "ELF":
+            for x in self.elf.secnames:
+                if va >= self.elf.secnames[x].sh_addr and va < self.elf.secnames[x].sh_addr + self.elf.secnames[x].sh_size:
+                    SHF_EXECINSTR = 0x4
+                    ret = self.elf.secnames[x].sh_flags & SHF_EXECINSTR != 0
+        
+        return ret
 
     def showSettings(self):
         for x in dir(self):
@@ -329,7 +365,7 @@ class CPyew:
         try:
             if self.buf.startswith("MZ") and hasPefile:
                 self.loadPE()
-            elif self.buf.startswith("\x7FELF") and hasElf:
+            elif self.buf.startswith("\x7fELF") and hasElf:
                 self.loadElf()
             elif self.buf.startswith("\xB3\xF2\x0D\x0A"):
                 self.loadPython()
@@ -436,13 +472,16 @@ class CPyew:
 
     def loadElf(self):
         if self.physical:
-            self.elf = Elf(self.filename)
+            self.elf = Elf(self.f)
         else:
-            self.elf = Elf(self.getBuffer())
+            sio = StringIO.StringIO(self.getBuffer())
+            self.elf = Elf(sio)
         
         self.format = "ELF"
         self.log("ELF Information")
         self.log()
+        
+        self.virtual = True
         
         if self.elf.e_machine == 62: # x86_64
             self.type = 64
@@ -459,7 +498,6 @@ class CPyew:
                 self.ep = self.elf.secnames[x].sh_offset
             #self.log("\t", self.elf.secnames[x].name, "0x%08x" % self.elf.secnames[x].sh_addr, self.elf.secnames[x].sh_size)
         #self.log()
-        
         self.log("Entry Point at 0x%x" % self.ep)
         if self.database is None:
             self.loadElfFunctions(self.elf)
@@ -600,6 +638,133 @@ class CPyew:
                 if self.debug:
                     raise
 
+    def loadDebugger(self):
+        self.dbg = vtrace.getTrace()
+        self.last_regs = {}
+
+    def printIp(self, all=False):
+        addr = None
+        regs = self.dbg.getRegisters()
+        
+        last_regs = self.last_regs
+        for reg in regs:
+            if reg.lower().find("ip") > -1:
+                addr = regs[reg]
+            
+            if reg.find("ctrl") == -1 and reg.find("mm") == -1 and \
+               reg.find("st") == -1 and reg.find("test") == -1 and \
+               reg.find("debug") == -1:
+                if all or len(self.last_regs) == 0 or (self.last_regs.has_key(reg) and self.last_regs[reg] != regs[reg]):
+                    print reg, "\t", "%16x" % regs[reg]
+                last_regs[reg] = regs[reg]
+        
+        self.last_regs = last_regs
+        print
+        offset = self.getOffsetFromVirtualAddress(addr)
+        print self.disassemble(self.dbg.readMemory(addr, self.bsize), type=self.type, baseoffset=addr, lines=self.lines/2, marker=True)
+
+    def debugHandler(self, command):
+        cmds = command.split(" ")
+        if len(cmds) == 0:
+            return False
+        
+        ret = True
+        if cmds[0] == "status":
+            print self.dbg
+        elif cmds[0].startswith("run"):
+            if not self.dbg.isAttached():
+                self.dbg.execute(self.filename)
+            
+            if cmds[0] == "runhere":
+                va = self.getVirtualAddressFromOffset(self.offset)
+                self.last_regs = {}
+                self.dbg.run(va)
+                ip = True
+            elif len(cmds) == 1:
+                self.last_regs = {}
+                self.dbg.run()
+                ip = False
+            else:
+                self.last_regs = {}
+                addr = int(cmds[1], 16)
+                self.dbg.run(addr)
+                ip = True
+            
+            if ip:
+                self.printIp()
+        elif cmds[0] == "ps":
+            filter = ""
+            if len(cmds) > 1:
+                filter = cmds[1]
+            
+            for x in self.dbg.ps():
+                if x[1].find(filter) > -1:
+                    print x[0], "\t", x[1]
+        elif cmds[0] == "stepi":
+            self.dbg.stepi()
+            self.printIp()
+        elif cmds[0] == "stepl":
+            self.dbg.steploop()
+            self.printIp()
+        elif cmds[0] == "maps":
+            maps = self.dbg.getMemoryMaps()
+            if len(maps) > 0:
+                biggest = 0
+                for amap in maps:
+                    if len(amap[3]) > biggest:
+                        biggest = len(amap[3])
+                
+                print "Name".ljust(biggest), "Address".ljust(16), "Size"
+                print
+                for amap in maps:
+                    print amap[3].ljust(biggest), ("0x%x" % amap[0]).ljust(16), str(amap[1])
+        elif cmds[0] == "attach":
+            if len(cmds) == 1:
+                print "No pid to attach"
+            else:
+                pid = int(cmds[1])
+                self.dbg.attach(pid)
+                self.printIp()
+        elif cmds[0] == "detach":
+            self.dbg.detach()
+        elif cmds[0] == "regs" or cmds[0] == "ir":
+            self.last_regs = {}
+            self.printIp(all)
+        elif cmds[0] == "cont":
+            self.dbg.run()
+            if self.dbg.isAttached():
+                self.printIp(all=True)
+        elif cmds[0] == "bpt":
+            if len(cmds) == 1:
+                print self.dbg.getBreakpoints()
+            else:
+                addr = int(cmds[1], 16)
+                self.dbg.addBreakByAddr(addr)
+        elif cmds[0] == "pid":
+            print self.dbg.pid
+        else:
+            ret = False
+        
+        return ret
+
+    def debugHelp(self):
+        print
+        print "Debugger commands:"
+        print
+        print "ps [str]                          Show process list (optionally filtered by str)"
+        print "attach                            Attach to a currently running program"
+        print "detach                            Detach from the currently attached program"
+        print "run [addr]                        Run the program (optionally up to addr)"
+        print "runhere                           Run until the current position"
+        print "stepi                             Step one instruction"
+        print "stepl                             Step over one loop"
+        print "cont                              Continue running the debugged program"
+        print "bpt addr                          Add a breakpoint"
+        print "regs                              Show registers"
+        print "maps                              Print memory map"
+        print "pid                               Print the pid of the process"
+        print "status                            Print the status of the program"
+
     def seek(self, pos):
         if pos > self.maxsize:
             self.log("End of file reached")
@@ -611,6 +776,11 @@ class CPyew:
             self.offset = pos
         self.f.seek(self.offset)
         self.buf = self.f.read(self.bsize)
+
+    def vseek(self, pos):
+        if self.virtual:
+            pos = self.getOffsetFromVirtualAddress(pos)
+        self.seek(pos)
 
     def hexdump(self, src=None, length=8, baseoffset=0, bsize=512):
         """ Show hexadecimal dump for the the given buffer """
@@ -641,8 +811,8 @@ class CPyew:
             ret = CDisObj()
             ret.offset = obj[0]
             ret.size = obj[1]
-            ret.mnemonic = "".join(obj[2])
-            ret.mnemonic = ret.mnemonic.split(" ")[0]
+            ret.mnemonic = str("".join(obj[2]))
+            ret.mnemonic = str(ret.mnemonic.split(" ")[0])
             
             data = obj[2].split(" ")
             if len(data) > 1:
@@ -659,8 +829,8 @@ class CPyew:
             ret = CDisObj()
             ret.offset = obj.offset
             ret.size = obj.size
-            ret.mnemonic = obj.mnemonic
-            ret.operands = obj.operands
+            ret.mnemonic = str(obj.mnemonic)
+            ret.operands = str(obj.operands)
             ret.instructionHex = obj.instructionHex
             return ret
             #return obj
@@ -689,7 +859,6 @@ class CPyew:
             for i in Decode(offset, buf, decode):
                 i = self.getDisassembleObject(i, ilines)
                 ret.append(i)
-                
                 ilines += 1
                 
                 if ilines == lines:
@@ -697,7 +866,7 @@ class CPyew:
                 
             return ret
 
-    def disassemble(self, buf, processor="intel", type=32, lines=40, bsize=512, baseoffset=0):
+    def disassemble(self, buf, processor="intel", type=32, lines=40, bsize=512, baseoffset=0, marker=False):
         """ Disassemble a given buffer using Distorm """
         if processor == "intel":
             if type == 32:
@@ -763,6 +932,12 @@ class CPyew:
                             else:
                                 index += 1
                                 comment = "\t; %d %s" % (index, self.names[tmp])
+                        else:
+                            if self.format == "PE":
+                                base = self.pe.OPTIONAL_HEADER.ImageBase
+                                strdata = self.pe.get_string_at_rva(tmp-base)
+                                if strdata is not None and strdata != "":
+                                    comment = "\t; %s" % repr(strdata)
                 else:
                     if self.names.has_key(i.offset):
                         mxrefs = []
@@ -781,23 +956,27 @@ class CPyew:
                         
                         pos += 1
                         if len(mxrefs) > 0:
-                            ret += "0x%08x ; FUNCTION %s\t XREFS %s\n" % (i.offset, self.names[i.offset], ", ".join(mxrefs))
+                            ret += "0x%08x ; FUNCTION %s\t XREFS %s" % (i.offset, self.names[i.offset], ", ".join(mxrefs))
                         else:
-                            ret += "0x%08x ; FUNCTION %s\n" % (i.offset, self.names[i.offset])
+                            ret += "0x%08x ; FUNCTION %s" % (i.offset, self.names[i.offset])
                         #comment = "\t; Function %s" % self.names[i.offset]
                     else:
                         comment = ""
 
                 if self.case == 'high':
-                    ret += "0x%08x (%02x) %-20s %s%s\n" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
+                    ret += "0x%08x (%02x) %-20s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
                 # if pyew.case is 'low' or wrong 
                 else:
-                    ret += "0x%08x (%02x) %-20s %s%s\n" % (i.offset, i.size, i.instructionHex, str(i.mnemonic).lower() + " " + str(ops).lower(), comment)
+                    ret += "0x%08x (%02x) %-20s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic).lower() + " " + str(ops).lower(), comment)
                 if str(i.mnemonic).lower().startswith("j") or \
                    str(i.mnemonic).lower() == "ret" or \
                    str(i.mnemonic).lower().find("loop") > -1:
                     pos += 1
-                    ret += "0x%08x " % i.offset + "-"*70 + "\n"
+                    ret += "\n0x%08x " % i.offset + "-"*70
+                
+                if pos == 1 and marker:
+                    ret += "\t  <---------------------"
+                ret += "\n"
                 
                 if pos >= lines:
                     break

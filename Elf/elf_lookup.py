@@ -326,13 +326,62 @@ R_386_TLS_LE_32:"Negated offset relative to",
 R_386_TLS_DTPMOD32:"ID of module containing symbol",
 R_386_TLS_DTPOFF32:"Offset in TLS block",
 R_386_TLS_TPOFF32:"Negated offset in static TLS block",
-#R_386_NUM:"",
+}
+
+R_X86_64_NONE        = 0
+R_X86_64_64          = 1
+R_X86_64_PC32        = 2
+R_X86_64_GOT32       = 3
+R_X86_64_PLT32       = 4
+R_X86_64_COPY        = 5
+R_X86_64_GLOB_DAT    = 6
+R_X86_64_JUMP_SLOT   = 7
+R_X86_64_RELATIVE    = 8
+R_X86_64_GOTPCREL    = 9
+R_X86_64_32          = 10
+R_X86_64_32S         = 11
+R_X86_64_16          = 12
+R_X86_64_PC16        = 13
+R_X86_64_8           = 14
+R_X86_64_PC8         = 15
+R_X86_64_DTPMOD64    = 16
+R_X86_64_DTPOFF64    = 17
+R_X86_64_TPOFF64     = 18
+R_X86_64_TLSGD       = 19
+R_X86_64_TLSLD       = 20
+R_X86_64_DTPOFF32    = 21
+R_X86_64_GOTTPOFF    = 22
+R_X86_64_TPOFF32     = 23
+R_X86_64_NUM         = 24
+
+r_types_amd64 = {
+R_X86_64_NONE       :'No reloc',
+R_X86_64_64         :'Direct 64 bit ',
+R_X86_64_PC32       :'PC relative 32 bit signed',
+R_X86_64_GOT32      :'32 bit GOT entry',
+R_X86_64_PLT32      :'32 bit PLT address',
+R_X86_64_COPY       :'Copy symbol at runtime',
+R_X86_64_GLOB_DAT   :'Create GOT entry',
+R_X86_64_JUMP_SLOT  :'Create PLT entry',
+R_X86_64_RELATIVE   :'Adjust by program base',
+R_X86_64_GOTPCREL   :'32 bit signed PC relative offset to GOT',
+R_X86_64_32         :'Direct 32 bit zero extended',
+R_X86_64_32S        :'Direct 32 bit sign extended',
+R_X86_64_16         :'Direct 16 bit zero extended',
+R_X86_64_PC16       :'16 bit sign extended pc relative',
+R_X86_64_8          :'Direct 8 bit sign extended ',
+R_X86_64_PC8        :'8 bit sign extended pc relative',
+R_X86_64_DTPMOD64   :'ID of module containing symbol',
+R_X86_64_DTPOFF64   :'Offset in modules TLS block',
+R_X86_64_TPOFF64    :'Offset in initial TLS block',
+R_X86_64_TLSGD      :'32 bit signed PC relative offset to two GOT entries for GD symbol',
+R_X86_64_TLSLD      :'32 bit signed PC relative offset to two GOT entries for LD symbol',
+R_X86_64_DTPOFF32   :'Offset in TLS block',
+R_X86_64_GOTTPOFF   :'32 bit signed PC relative offset to GOT entry for IE symbol',
+R_X86_64_TPOFF32    :'Offset in initial TLS block',
 }
 
 ## Define e_flags to 386
-r_types = r_types_386
-
-
 SHT_NULL = 0
 SHT_PROGBITS = 1
 SHT_SYMTAB = 2
@@ -504,10 +553,42 @@ DT_ENCODING = 32
 DT_PREINIT_ARRAY = 32
 DT_PREINIT_ARRAYSZ = 33
 DT_NUM      = 34
-DT_LOOS     = 0x6000000d
-DT_HIOS     = 0x6ffff000
-DT_LOPROC   = 0x70000000
-DT_HIPROC   = 0x7fffffff
+DT_GNU_PRELINKED    = 0x6ffffdf5 
+DT_GNU_CONFLICTSZ   = 0x6ffffdf6 
+DT_GNU_LIBLISTSZ    = 0x6ffffdf7 
+DT_CHECKSUM         = 0x6ffffdf8 
+DT_PLTPADSZ         = 0x6ffffdf9 
+DT_MOVEENT          = 0x6ffffdfa 
+DT_MOVESZ           = 0x6ffffdfb 
+DT_FEATURE_1        = 0x6ffffdfc 
+DT_POSFLAG_1        = 0x6ffffdfd 
+DT_SYMINSZ          = 0x6ffffdfe 
+DT_SYMINENT         = 0x6ffffdff 
+DT_GNU_HASH         = 0x6ffffef5 
+DT_TLSDESC_PLT      = 0x6ffffef6 
+DT_TLSDESC_GOT      = 0x6ffffef7 
+DT_GNU_CONFLICT     = 0x6ffffef8 
+DT_GNU_LIBLIST      = 0x6ffffef9 
+DT_CONFIG           = 0x6ffffefa 
+DT_DEPAUDIT         = 0x6ffffefb 
+DT_AUDIT            = 0x6ffffefc 
+DT_PLTPAD           = 0x6ffffefd 
+DT_MOVETAB          = 0x6ffffefe 
+DT_SYMINFO          = 0x6ffffeff 
+DT_VERSYM           = 0x6ffffff0 
+DT_RELACOUNT        = 0x6ffffff9 
+DT_RELCOUNT         = 0x6ffffffa 
+DT_FLAGS_1          = 0x6ffffffb 
+DT_VERDEF           = 0x6ffffffc 
+DT_VERDEFNUM        = 0x6ffffffd 
+DT_VERNEED          = 0x6ffffffe 
+DT_VERNEEDNUM       = 0x6fffffff 
+DT_AUXILIARY        = 0x7ffffffd 
+DT_FILTER           = 0x7fffffff 
+DT_LOOS             = 0x6000000d
+DT_HIOS             = 0x6ffff000
+DT_LOPROC           = 0x70000000
+DT_HIPROC           = 0x7fffffff
 #DT_PROCNUM  = DT_MIPS_NUM
 
 dt_types = {

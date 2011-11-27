@@ -253,10 +253,11 @@ class CGraphCluster(object):
         self.data = []
 
     def processFile(self, filename):
-        #print "[+] Analyzing file %s" % filename
-        pyew = CPyew(batch=False)
+        sys.stderr.write("[+] Analyzing file %s\n" % filename)
+        sys.stderr.flush()
+        pyew = CPyew(batch=True)
         pyew.deepcodeanalysis = self.deep
-        pyew.analysis_timeout = 0
+        pyew.analysis_timeout = 15
         pyew.loadFile(filename)
         
         if pyew.format in ["PE", "ELF"]:
@@ -297,7 +298,11 @@ class CGraphCluster(object):
 
     def processFiles(self):
         for f in self.files:
-            self.processFile(f)
+            try:
+                self.processFile(f)
+            except:
+                sys.stderr.write("Error: %s\n" % str(sys.exc_info()[1]))
+                sys.stderr.flush()
 
 def main(prog1, prog2):
     cluster = CGraphCluster()
@@ -330,7 +335,7 @@ def compareDirectory(path):
         for stat in pyew.program_stats:
             data = data + ":".join(map(str, pyew.program_stats[stat].values())).replace(".", ",") + ":"
         phash, dones = cprimes.generateHash(pyew)
-        print "%s:%s:%s:%s%d:%s" % (hash, pyew.f.name, str(phash.as_integer_ratio()[0]), data, len(pyew.functions), str(alist.adjacency_lists(pyew)))
+        print "%s:%s:%s:%s%d:%s" % (hash, pyew.f.name, str(phash.as_integer_ratio()[0]), data, len(pyew.functions), str(alist.createAdjacencyList(pyew)))
 
 def usage():
     print "Usage:", sys.argv[0], "<prog 1> <prog 2> | <directory>"

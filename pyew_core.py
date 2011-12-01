@@ -268,6 +268,20 @@ class CPyew:
         
         return ret
 
+    def isVirtualAddress(self, va):
+        ret = False
+        if self.format == "PE":
+            # FIXME
+            pass
+        elif self.format == "ELF":
+            for x in self.elf.secnames:
+                if self.elf.secnames[x].sh_addr > 0 and va >= self.elf.secnames[x].sh_addr \
+                   and va < self.elf.secnames[x].sh_addr + self.elf.secnames[x].sh_size:
+                    ret = True
+                    break
+        
+        return ret
+
     def getOffsetFromVirtualAddress(self, va):
         ret = None
         if self.format == "PE":
@@ -956,13 +970,31 @@ class CPyew:
                         
                         pos += 1
                         if len(mxrefs) > 0:
-                            ret += "0x%08x ; FUNCTION %s\t XREFS %s" % (i.offset, self.names[i.offset], ", ".join(mxrefs))
+                            ret += "0x%08x ; FUNCTION %s\t XREFS %s\n" % (i.offset, self.names[i.offset], ", ".join(mxrefs))
                         else:
-                            ret += "0x%08x ; FUNCTION %s" % (i.offset, self.names[i.offset])
+                            ret += "0x%08x ; FUNCTION %s\n" % (i.offset, self.names[i.offset])
                         #comment = "\t; Function %s" % self.names[i.offset]
                     else:
                         comment = ""
-
+                        ana = CX86CodeAnalyzer(self)
+                        val, isimport, isbreak = ana.resolveAddress(ops)
+                        if val is not None and str(val).isdigit():
+                            addr = int(val)
+                            if self.isVirtualAddress(addr):
+                                offset = self.getOffsetFromVirtualAddress(addr)
+                                if self.names.has_key(offset):
+                                    func = self.names[offset]
+                                    index += 1
+                                    comment = "\t; %d %s" % (index, func)
+                                    self.calls.append(offset)
+                                elif not self.executableMemory(addr):
+                                    data = self.getBytes(offset, 40)
+                                    data = data[:data.find("\x00")]
+                                    if len(data) == 40:
+                                        data = data[:30] + "..."
+                                    if data != "":
+                                        comment = "\t; %s" % repr(data)
+                
                 if self.case == 'high':
                     ret += "0x%08x (%02x) %-20s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
                 # if pyew.case is 'low' or wrong 

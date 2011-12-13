@@ -485,9 +485,10 @@ def main(filename):
             elif cmd == "interact":
                 code.interact(local=locals())
             elif cmd == "edit":
+                off = pyew.offset
                 pyew.f.close()
                 pyew.f = open(filename, "r+wb")
-                pyew.seek(0)
+                pyew.seek(off)
             elif cmd.split(" ")[0] in ["ls"]:
                 data = cmd.split(" ")
                 if len(data) == 2:
@@ -502,9 +503,9 @@ def main(filename):
                         print "\t", script
             elif cmd.split(" ")[0] in ["wx", "wa"]:
                 if cmd.split(" ")[0] == "wx":
-                    data = unhexlify(cmd.split(" ")[1])
+                    data = unhexlify(cmd[3:])
                 else:
-                    data = cmd.split(" ")[1]
+                    data = cmd[3:]
                 
                 pyew.f.seek(pyew.offset)
                 pyew.f.write(data)

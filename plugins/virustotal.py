@@ -74,6 +74,7 @@ class CVirusTotalScanner:
         print "-"*len(msg)
         print
         
+        match = None
         for match in self.matches:
             print match.ljust(25) + ": " + self.matches[match]
         

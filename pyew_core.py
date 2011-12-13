@@ -1071,10 +1071,26 @@ class CPyew:
             return []
         
         oldpos = f.tell()
+        f.seek(0, 2)
+        bigfile = False
+        filesize = f.tell()
+        if filesize > 1024*1024*512:
+            bigfile = True
+        
         f.seek(offset)
-        buf = f.read()
+        if not bigfile:
+            buf = f.read()
+        
         moffset = 0
         hints = []
+        
+        if bigfile:
+            if mtype in ["s", "u", "o"] and search == "":
+                print "Sorry, this search type is not supported for big files"
+                return []
+            elif mtype == "r":
+                print "BUG: Regular expression searchs aren't supported for big files, sorry"
+                return []
         
         if mtype == "s" and search=="":
             hints = self.strings(buf, doprint, offset=offset)
@@ -1084,41 +1100,50 @@ class CPyew:
             hints = self.extract(buf, strre=search, doprint=doprint, offset=offset)
         elif mtype == "o":
             hints = self.extractoffsetstring(buf, doprint=doprint, offset=offset)
-        
         else:
             try:
-                self.calls = []
+                # For big files, search in chunks of 512 MBs
+                if bigfile:
+                    buf = f.read(1024*1024*512)
+                
                 while 1:
-                    if mtype == "s":
-                        pos = buf.find(search)
-                    elif mtype == "i":
-                        pos = buf.lower().find(search.lower())
-                    elif mtype == "x":
-                        pos = buf.find(unhexlify(search))
-                    elif mtype == "X":
-                        pos = buf.lower().find(unhexlify(search).lower())
-                    elif mtype == "u":
-                        pos = buf.find(to_unicode(search))
-                    elif mtype == "U":
-                        pos = buf.lower().find(to_unicode(search.lower()))
-                    else:
-                        self.log("Unknown search type!")
-                        break
-                    
-                    if pos > -1:
-                        if doprint:
-                            s = buf[pos:pos+cols]
-                            s = s.translate(FILTER)
-                            tmp = moffset+pos+offset
-                            self.calls.append(tmp)
-                            self.log("HINT[0x%08x]: %s" % (tmp, s))
-                        hints.append({moffset+pos+offset:buf[pos:pos+cols]})
-                        moffset += pos + len(search)
-                        buf = buf[pos+len(search):]
-                        
-                        if buf == "":
+                    self.calls = []
+                    while 1:
+                        if mtype == "s":
+                            pos = buf.find(search)
+                        elif mtype == "i":
+                            pos = buf.lower().find(search.lower())
+                        elif mtype == "x":
+                            pos = buf.find(unhexlify(search))
+                        elif mtype == "X":
+                            pos = buf.lower().find(unhexlify(search).lower())
+                        elif mtype == "u":
+                            pos = buf.find(to_unicode(search))
+                        elif mtype == "U":
+                            pos = buf.lower().find(to_unicode(search.lower()))
+                        else:
+                            self.log("Unknown search type!")
                             break
-                    else:
+                        
+                        if pos > -1:
+                            if doprint:
+                                s = buf[pos:pos+cols]
+                                s = s.translate(FILTER)
+                                tmp = moffset+pos+offset
+                                self.calls.append(tmp)
+                                self.log("HINT[0x%08x]: %s" % (tmp, s))
+                            hints.append({moffset+pos+offset:buf[pos:pos+cols]})
+                            moffset += pos + len(search)
+                            buf = buf[pos+len(search):]
+                            
+                            if buf == "":
+                                break
+                        else:
+                            break
+                    
+                    if not bigfile:
+                        break
+                    elif f.tell() == filesize:
                         break
             except KeyboardInterrupt:
                 self.log("Aborted")

@@ -478,9 +478,8 @@ def main(filename):
                 oldpyew = None
             elif cmd == "file":
                 oldpyew = pyew
-                del pyew
                 pyew = CPyew()
-                buf = oldpyew.getBytes(oldpyew.offset, oldpyew.maxsize)
+                buf = oldpyew.getBytes(oldpyew.offset, oldpyew.embedsize)
                 pyew.loadFromBuffer(buf, oldpyew.filename + "[embed]")
             elif cmd == "interact":
                 code.interact(local=locals())

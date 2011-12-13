@@ -173,7 +173,10 @@ class CPyew:
         self.lines=40
         self.bsize=512
         self.hexcolumns=16
-        self.maxfilesize=1024*1024*1024
+        self.maxfilesize=1024*1024*512
+        # when reading files embedded in other files this will be the maximum
+        # number of bytes read
+        self.embedsize = 1024*1024*5
         self.pe = None
         self.elf = None
         self.calls = []
@@ -1074,7 +1077,7 @@ class CPyew:
         f.seek(0, 2)
         bigfile = False
         filesize = f.tell()
-        if filesize > 1024*1024*512:
+        if filesize > self.maxfilesize:
             bigfile = True
         
         f.seek(offset)
@@ -1104,7 +1107,7 @@ class CPyew:
             try:
                 # For big files, search in chunks of 512 MBs
                 if bigfile:
-                    buf = f.read(1024*1024*512)
+                    buf = f.read(self.maxfilesize)
                 
                 while 1:
                     self.calls = []

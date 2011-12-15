@@ -120,7 +120,64 @@ class CX86CodeAnalyzer:
         else:
             self.xrefs_from[afrom] = [ato]
 
+    def breakBasicBlock(self, bbaddr, l, lines, f):
+        #print
+        #print "Jumping inside a basic block, dumping it..."
+        bb_addrs = []
+        for ins in self.basic_blocks[bbaddr].instructions:
+            bb_addrs.append(ins.offset)
+            #print hex(ins.offset), ins.mnemonic, ins.operands
+        #print "Removing addresses belonging to the new basic block and filling new basic block"
+        new_bb = CX86BasicBlock()
+        new_bb.offset = l.offset
+        i = 0
+        for ins in list(self.basic_blocks[bbaddr].instructions):
+            if ins.offset < l.offset:
+                self.basic_blocks[bbaddr].instructions = self.basic_blocks[bbaddr].instructions[:i+1]
+            else:
+                new_bb.instructions.append(ins)
+            i += 1
+        #raw_input("2")
+        #print "Dumping new splited basic block"
+        for ins in self.basic_blocks[bbaddr].instructions:
+            bb_addrs.append(ins.offset)
+            #print hex(ins.offset), ins.mnemonic, ins.operands
+        #raw_input("3")
+        #print "Modifying connections"
+        conns = self.basic_blocks[bbaddr].connections
+        self.basic_blocks[bbaddr].connections = [(ins.offset, l.offset)]
+        for conn in conns:
+            afrom, ato = conn
+            if afrom <= l.offset:
+                self.basic_blocks[bbaddr].connections.append((afrom, ato))
+            else:
+                new_bb.connections.append((afrom, ato))
+        #print "Dumping connections for splitted basic block"
+        """
+        for conn in self.basic_blocks[bbaddr].connections:
+            a, b = conn
+            print "Connection from 0x%x to 0x%x" % (a, b)
+        raw_input("5")
+        print "Dumping connections for *NEW* basic block"
+        for conn in new_bb.connections:
+            a, b = conn
+            print "Connection from 0x%x to 0x%x" % (a, b)
+        raw_input("6")
+        """
+        f.basic_blocks.append(new_bb)
+        #print "Removing the next lines from 'lines'"
+        while 1:
+            if len(lines) > 0:
+                tmp_line = lines[0]
+                if tmp_line.offset in bb_addrs:
+                    lines = lines[1:]
+                else:
+                    break
+        #raw_input("?")
+        return lines, f
+
     def createFunction(self, addr):
+        baietz = False
         if self.timeout != 0 and time.time() > self.start_time + self.timeout:
             raise Exception("Code analysis for x86 timed-out")
         
@@ -128,6 +185,9 @@ class CX86CodeAnalyzer:
             #print "Function %08x already analyzed" % addr
             return
         
+        # First, create a function object. Then, disassemble the 1st 100 lineal
+        # instructions given an offset (addr)
+        #
         self.names[addr] = "sub_%08x" % addr
         f = CX86Function(addr)
         lines = self.pyew.disasm(addr, self.pyew.processor, self.pyew.type, 100, 1500)
@@ -152,14 +212,14 @@ class CX86CodeAnalyzer:
         #
         while len(lines) > 0 or len(flow) > 0:
             if len(lines) > 0:
+                # Extract and remove the fist element in the list of lineally
+                # disassembled instructions
                 l = lines[0]
                 lines = lines[1:]
+                
+                # Was it previously analyzed?
                 if l.offset in self.analyzed:
                     # Already analyzed
-                    """analyzed_total += 1
-                    if analyzed_total > 16:
-                        lines = []"""
-                    
                     if l.offset in self.basic_blocks:
                         lines = []
                         if len(bb.instructions) > 0:
@@ -171,6 +231,16 @@ class CX86CodeAnalyzer:
                         bb = CX86BasicBlock()
                         continue
                     else:
+                        # OK, the address is already analyzed, it's a jump or the
+                        # like and we may jump inside a basic block so, in this
+                        # case split the basic block into smaller, but correct,
+                        # basic blocks
+                        for bbaddr in list(self.basic_blocks):
+                            bb_start = bbaddr
+                            bb_end = self.basic_blocks[bbaddr].instructions[-1].offset
+                            if l.offset > bb_start and l.offset < bb_end:
+                                lines, f = self.breakBasicBlock(bbaddr, l, lines, f)
+                                break
                         continue
                 else:
                     analyzed_total = 0
@@ -256,6 +326,8 @@ class CX86CodeAnalyzer:
                 bb.addConnection(l.offset, val)
                 
                 if mnem != "JMP" and val < self.pyew.maxsize and val is not None:
+                    if val == 0x440:
+                        baietz = True
                     lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
                 
                 if mnem != "JMP":

@@ -121,29 +121,23 @@ class CX86CodeAnalyzer:
             self.xrefs_from[afrom] = [ato]
 
     def breakBasicBlock(self, bbaddr, l, lines, f):
-        #print
-        #print "Jumping inside a basic block, dumping it..."
         bb_addrs = []
         for ins in self.basic_blocks[bbaddr].instructions:
             bb_addrs.append(ins.offset)
-            #print hex(ins.offset), ins.mnemonic, ins.operands
-        #print "Removing addresses belonging to the new basic block and filling new basic block"
+        
+        # Removed addresses belonging to the new basic block and fill new one
         new_bb = CX86BasicBlock()
         new_bb.offset = l.offset
         i = 0
         for ins in list(self.basic_blocks[bbaddr].instructions):
+            bb_addrs.append(ins.offset)
             if ins.offset < l.offset:
                 self.basic_blocks[bbaddr].instructions = self.basic_blocks[bbaddr].instructions[:i+1]
             else:
                 new_bb.instructions.append(ins)
             i += 1
-        #raw_input("2")
-        #print "Dumping new splited basic block"
-        for ins in self.basic_blocks[bbaddr].instructions:
-            bb_addrs.append(ins.offset)
-            #print hex(ins.offset), ins.mnemonic, ins.operands
-        #raw_input("3")
-        #print "Modifying connections"
+        
+        # Modify basic block's connections
         conns = self.basic_blocks[bbaddr].connections
         self.basic_blocks[bbaddr].connections = [(ins.offset, l.offset)]
         for conn in conns:
@@ -152,20 +146,9 @@ class CX86CodeAnalyzer:
                 self.basic_blocks[bbaddr].connections.append((afrom, ato))
             else:
                 new_bb.connections.append((afrom, ato))
-        #print "Dumping connections for splitted basic block"
-        """
-        for conn in self.basic_blocks[bbaddr].connections:
-            a, b = conn
-            print "Connection from 0x%x to 0x%x" % (a, b)
-        raw_input("5")
-        print "Dumping connections for *NEW* basic block"
-        for conn in new_bb.connections:
-            a, b = conn
-            print "Connection from 0x%x to 0x%x" % (a, b)
-        raw_input("6")
-        """
         f.basic_blocks.append(new_bb)
-        #print "Removing the next lines from 'lines'"
+        
+        # Remove the next lines from 'lines'
         while 1:
             if len(lines) > 0:
                 tmp_line = lines[0]
@@ -173,7 +156,6 @@ class CX86CodeAnalyzer:
                     lines = lines[1:]
                 else:
                     break
-        #raw_input("?")
         return lines, f
 
     def createFunction(self, addr):

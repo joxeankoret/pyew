@@ -94,15 +94,6 @@ class CFlowGraphGenerator(object):
         bbs = {}
         nodes = {}
         for bb in func.basic_blocks:
-            """if self.pyew.debug:
-                print "BASIC BLOCK START", hex(bb.offset)
-                print "  Instructions:"
-                for ins in bb.instructions:
-                    print "\t", hex(ins.offset), ins.mnemonic, ins.operands
-                print "  Connections:"
-                for conn in bb.connections:
-                    print "\t", hex(conn[0]), "->", hex(conn[1])
-                print "BASIC BLOCK END"""
             instructions = []
             bb_start = bb.instructions[0].offset
             end_offset = bb.instructions[-1].offset

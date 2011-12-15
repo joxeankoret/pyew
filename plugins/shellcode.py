@@ -28,7 +28,7 @@ try:
 except:
     hasLibEmu = False
 
-def shellcodeSearch(pyew):
+def shellcodeSearch(pyew, doprint=True, args=None):
     """ Search for shellcode """
 
     moffset = pyew.offset

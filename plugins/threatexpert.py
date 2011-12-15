@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import webbrowser
 from hashlib import md5
 
-def threatExpertSearch(pyew):
+def threatExpertSearch(pyew, args=None):
     """ Search in Threat Expert for the behavior's report """
 
     baseurl = "http://www.threatexpert.com/report.aspx?md5="

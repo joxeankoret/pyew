@@ -362,15 +362,15 @@ def pdfViewStreams(pyew, doprint=True, stream_id=-1, gui=False):
         elif stream_id == streams:
             break
 
-def pdfViewGui(pyew, doprint=True, stream_id=-1):
+def pdfViewGui(pyew, doprint=True, stream_id=-1, args=None):
     """ Show decoded streams (in a GUI) """
     return pdfViewStreams(pyew, doprint=doprint, stream_id=stream_id, gui=True)
 
-def pdfObj(pyew, doprint=True):
+def pdfObj(pyew, doprint=True, args=None):
     """ Show object's list """
     pyew.dosearch(pyew.f, "r", "\d+ \d+ obj.*", cols=60, doprint=True, offset=0)
 
-def pdfStream(pyew, doprint=True):
+def pdfStream(pyew, doprint=True, args=None):
     """ Show streams list """
     l = []
     hits = pyew.dosearch(pyew.f, "s", "stream", cols=60, doprint=False, offset=0)
@@ -402,7 +402,7 @@ def pdfSeekObj(pyew, args=None):
     print "Object not found"
     return False
 
-def pdfSeekStream(pyew, args = None):
+def pdfSeekStream(pyew, args=None):
     """ Seek to one stream """
     if not args:
         print "An argument is required"

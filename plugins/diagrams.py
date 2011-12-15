@@ -17,6 +17,7 @@ class CDotDiagram:
         self.identifiers = {}
         self.nodes = {}
         self.connections = {}
+        self.colors = {}
         self.antirules = []
         self._verbose = False
 
@@ -27,7 +28,7 @@ class CDotDiagram:
             self.nodes[node.name] = node.label
             self.identifiers[node.name] = self.index
 
-    def addConnectedNode(self, node1, node2):
+    def addConnectedNode(self, node1, node2, color="red"):
         if node1.name == node2.name:
             return
         
@@ -48,20 +49,22 @@ class CDotDiagram:
             self.connections[node1.name] = [node2.name]
         else:
             self.connections[node1.name].append(node2.name)
-    
+        
+        self.colors[(self.identifiers[node1.name], self.identifiers[node2.name])] = color
+
     def generateDot(self):
-        buf = 'digraph G {\n graph [overlap=scale]; node [fontname=Courier]; \n'
+        buf = 'digraph G {\n graph [overlap=scale]; node [fontname=Courier, center=false]; \n'
         
         if self._verbose:
             print "Total of %d node(s)" % len(self.nodes)
         
         for node in self.nodes:
-            buf += ' a%s [shape=box, label = "%s", color="blue"]\n' % (self.identifiers[node], self.nodes[node])
+            buf += ' a%s [fontname="Courier", shape=box, label="%s", color="blue" url="%s"]\n' % (self.identifiers[node], self.nodes[node], node)
         buf += "\n"
         
         if self._verbose:
             print "Total of %d connections(s)" % len(self.connections)
-    
+        
         i = 0
         for conn in self.connections:
             i += 1
@@ -75,17 +78,8 @@ class CDotDiagram:
             
             for x in self.connections[conn]:
                 parent = self.identifiers[x]
-                child  = self.identifiers[conn]
-                rule = str(parent) + "-" + str(child)
-                antirule = str(child) + "-" + str(parent)
-                
-                if antirule not in self.antirules and rule not in self.antirules:
-                    buf += " a%s -> a%s [style = bold, color=red]\n" % (child, parent)
-                    self.antirules.append(rule)
-                    self.antirules.append(antirule)
-                else:
-                    pass
-                    #print "antirule"
+                child  = self.identifiers[conn]                
+                buf += " a%s -> a%s [style = bold, color=%s]\n" % (child, parent, self.colors[(child, parent)])
             
         buf += "}"
         return buf

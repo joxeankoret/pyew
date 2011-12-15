@@ -29,7 +29,7 @@ try:
 except:
     pass
 
-def ole2Explore(pyew):
+def ole2Explore(pyew, doprint=True, args=None):
     """ Get the OLE2 directory """
     if not pyew.physical:
        filename = tempfile.mkstemp("pyew")[1]

@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 
-def antivmSearch(pyew):
+def antivmSearch(pyew, doprint=True, args=None):
     """ Search for common antivm tricks"""
     tricks = {
         "Red Pill":"\x0f\x01\x0d\x00\x00\x00\x00\xc3",

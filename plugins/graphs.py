@@ -38,15 +38,23 @@ class CCallGraphGenerator(object):
     def __init__(self, pyew):
         self.pyew = pyew
 
-    def generateDot(self):
+    def generateDot(self, func=None):
         dot = CDotDiagram()
-        ep = self.pyew.ep
-        try:
-            l = self.pyew.exports.keys()
-            l.append(self.pyew.ep)
-        except:
-            print "Error:", sys.exc_info()[1]
-            l = [self.pyew.ep]
+        if func is None:
+            ep = self.pyew.ep
+        else:
+            ep = func
+        
+        if func is None:
+            try:
+                l = self.pyew.exports.keys()
+                l.append(self.pyew.ep)
+            except:
+                print "Error:", sys.exc_info()[1]
+                l = [self.pyew.ep]
+        else:
+            l = [ep]
+        
         functions = []
         
         for ep in l:
@@ -76,6 +84,49 @@ class CCallGraphGenerator(object):
                     
         return dot.generateDot()
 
+class CFlowGraphGenerator(object):
+    def __init__(self, pyew):
+        self.pyew = pyew
+
+    def generateDot(self, f):
+        dot = CDotDiagram()
+        func = self.pyew.functions[f]
+        bbs = {}
+        nodes = {}
+        for bb in func.basic_blocks:
+            instructions = []
+            bb_start = bb.instructions[0].offset
+            end_offset = bb.instructions[-1].offset
+            bb_end = end_offset + bb.instructions[-1].size
+            
+            buf = self.pyew.getBytes(bb_start, bb_end-bb_start)
+            instructions = self.pyew.disassemble(buf=buf, baseoffset=bb_start, marker=False)
+            instructions = instructions.replace("\r", "").replace("\n", "\\l")
+            instructions = instructions.replace('"', '\"')
+            
+            bbs[bb_start] = instructions
+            bbs[end_offset] = instructions
+            
+            n = CNode(bb.offset, bbs[bb.offset])
+            dot.addNode(n)
+            nodes[bb.offset] = n
+        
+        for bb in func.basic_blocks:
+            for conn in bb.connections:
+                a, b = conn
+                next_head = self.pyew.NextHead(bb.instructions[-1].offset)
+                if nodes.has_key(b) and nodes.has_key(bb.offset):
+                    if len(bb.connections) == 1:
+                        color = "blue"
+                    elif next_head == b:
+                        color = "red"
+                    else:
+                        color = "green"
+                    
+                    dot.addConnectedNode(nodes[bb.offset], nodes[b], color)
+        
+        return dot.generateDot()
+
 def showDotInXDot(buf):
     try:    
         import gtk, thread
@@ -92,17 +143,52 @@ def showDotInXDot(buf):
     except ImportError:
         print "Python-GTK is not installed"
 
-def showCallGraph(pyew, doprint=True, addr=None):
-    """ Show the callgraph of the whole program """
+def showCallGraph(pyew, doprint=True, addr=None, args=None):
+    """ Show the callgraph of the whole program or the specified function """
     dot = CCallGraphGenerator(pyew)
-    buf = dot.generateDot()
+    if args is not None:
+        buf = []
+        for arg in args:
+            f = pyew.getFunction(arg)
+            if f is None:
+                print "Invalid function %s" % repr(arg)
+                break
+            
+            buf.append(dot.generateDot(func=f))
+    else:
+        buf = dot.generateDot()
 
     if doprint:
-        showDotInXDot(buf)
+        if type(buf) is type([]):
+            for b in buf:
+                showDotInXDot(b)
+        else:
+            showDotInXDot(buf)
 
     return buf
 
-def showBinaryImage(pyew, doprint=True):
+def showFlowGraph(pyew, doprint=True, args=None):
+    """ Show the flowgraph of the specified function or the current on """
+    if args is None:
+        args = [str(pyew.offset)]
+
+    dot = CFlowGraphGenerator(pyew)
+    buf = []
+    for arg in args:
+        f = pyew.getFunction(arg)
+        if f is None:
+            print "Invalid function %s" % repr(arg)
+            break
+        
+        buf.append(dot.generateDot(f))
+
+    if doprint:
+        for b in buf:
+            showDotInXDot(b)
+
+    return buf
+
+def showBinaryImage(pyew, doprint=True, args=None):
     """ Show an image representing the current opened file """
 
     buf = pyew.getBuffer()
@@ -130,7 +216,8 @@ def showBinaryImage(pyew, doprint=True):
 
 if hasPil:
     functions = {"cgraph":showCallGraph,
-             "binvi":showBinaryImage}
+                 "fgraph":showFlowGraph,
+                 "binvi":showBinaryImage}
 else:
     functions = {"cgraph":showCallGraph}
 

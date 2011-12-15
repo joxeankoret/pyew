@@ -231,7 +231,7 @@ class CPyew:
 
     def NextHead(self, offset):
         obj = self.disasm(offset, self.processor, self.type, 1)
-        return offset + obj.size
+        return offset + obj[0].size
 
     def GetMnem(self, offset):
         return self.GetMnems(offset, num)
@@ -999,10 +999,10 @@ class CPyew:
                                         comment = "\t; %s" % repr(data)
                 
                 if self.case == 'high':
-                    ret += "0x%08x (%02x) %-20s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
+                    ret += "0x%08x (%02x) %-22s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
                 # if pyew.case is 'low' or wrong 
                 else:
-                    ret += "0x%08x (%02x) %-20s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic).lower() + " " + str(ops).lower(), comment)
+                    ret += "0x%08x (%02x) %-22s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic).lower() + " " + str(ops).lower(), comment)
                 if str(i.mnemonic).lower().startswith("j") or \
                    str(i.mnemonic).lower() == "ret" or \
                    str(i.mnemonic).lower().find("loop") > -1:
@@ -1164,3 +1164,18 @@ class CPyew:
         self.seek(moffset)
         
         return buf
+
+    def getFunction(self, arg):
+        f = None
+        if arg.startswith("0x"):
+            f = int(arg, 16)
+        elif arg.isdigit():
+            f = int(arg)
+        else:
+            for addr in self.names:
+                if self.names[addr] == arg:
+                    f = addr
+                    print f, addr, arg
+        
+        return f
+

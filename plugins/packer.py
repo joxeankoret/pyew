@@ -25,7 +25,7 @@ import sys
 import pefile
 import peutils
 
-def checkPacker(pyew, doprint=True):
+def checkPacker(pyew, doprint=True, args=None):
     """ Check if the PE file is packed """
     if pyew.pe is None:
         return

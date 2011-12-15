@@ -84,7 +84,7 @@ def doFind(x, buf):
     
     return ret
 
-def checkUrls(pyew, doprint=True):
+def checkUrls(pyew, doprint=True, args=[]):
     """ Check URLs of the current file """
     
     oks = []
@@ -115,7 +115,7 @@ def checkUrls(pyew, doprint=True):
         
     return oks
 
-def checkBad(pyew, doprint=True):
+def checkBad(pyew, doprint=True, args=[]):
     """ Check for known bad URLs """
     
     returls = []

@@ -28,7 +28,11 @@ import urllib
 import binascii
 import tempfile
 
-from easygui import textbox, codebox, ccbox
+try:
+    from easygui import textbox, codebox, ccbox
+    hasEasyGui = True
+except:
+    hasEasyGui = False
 
 try:
     from cStringIO import StringIO
@@ -417,10 +421,12 @@ def pdfSeekStream(pyew, args=None):
 
 functions = {"pdf":pdfInfo,
              "pdfilter":pdfStreams,
-             "pdfvi":pdfViewStreams,
-             "pdfview":pdfViewGui,
              "pdfobj":pdfObj,
              "pdfstream":pdfStream,
              "pdfso":pdfSeekObj,
              "pdfss":pdfSeekStream}
+
+if hasEasyGui:
+    functions["pdfvi"] = pdfViewStreams
+    functions["pdfview"] = pdfViewGui
 

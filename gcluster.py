@@ -257,7 +257,7 @@ class CGraphCluster(object):
         sys.stderr.flush()
         pyew = CPyew(batch=True)
         pyew.deepcodeanalysis = self.deep
-        pyew.analysis_timeout = 15
+        pyew.analysis_timeout = 0
         pyew.loadFile(filename)
         
         if pyew.format in ["PE", "ELF"]:

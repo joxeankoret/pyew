@@ -52,6 +52,7 @@ class CX86BasicBlock(object):
             self.connections.append((afrom, ato))
 
 class CX86CodeAnalyzer:
+    timeout=300
     def __init__(self, pyew, type="PE"):
         self.pyew = pyew
         self.type = type
@@ -65,9 +66,7 @@ class CX86CodeAnalyzer:
         self.xrefs_to = {}
         self.xrefs_from = {}
         self.antidebug = []
-        self.timeout = None
         
-        self.timeout = 300
         self.last_msg_size = 0
         self.start_time = 0
 
@@ -159,7 +158,6 @@ class CX86CodeAnalyzer:
         return lines, f
 
     def createFunction(self, addr):
-        baietz = False
         if self.timeout != 0 and time.time() > self.start_time + self.timeout:
             raise Exception("Code analysis for x86 timed-out")
         
@@ -308,8 +306,6 @@ class CX86CodeAnalyzer:
                 bb.addConnection(l.offset, val)
                 
                 if mnem != "JMP" and val < self.pyew.maxsize and val is not None:
-                    if val == 0x440:
-                        baietz = True
                     lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
                 
                 if mnem != "JMP":

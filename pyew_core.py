@@ -4,7 +4,7 @@
 """
 Pyew! A Python Tool like the populars radare and *iew
 
-Copyright (C) 2009, Joxean Koret
+Copyright (C) 2009, 2010, 2011, 2012 Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,7 +34,8 @@ import StringIO
 
 from gzip import GzipFile
 
-from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT
+from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT, \
+                   ANALYSIS_FUNCTIONS_AT_END
 from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
 from safer_pickle import SafeUnpickler
 
@@ -210,6 +211,8 @@ class CPyew:
         else:
             self.has_debug = False
         
+        self._anal = None
+        
         self.batch = batch
         self.loadPlugins()
 
@@ -303,8 +306,13 @@ class CPyew:
     def executableMemory(self, va):
         ret = False
         if self.format == "PE":
-            # FIXME
-            pass
+            IMAGE_SCN_MEM_EXECUTE = 0x20000000
+            for x in self.pe.sections:
+                min_addr = self.pe.OPTIONAL_HEADER.ImageBase+x.VirtualAddress
+                max_addr = self.pe.OPTIONAL_HEADER.ImageBase+x.SizeOfRawData
+                if va >= min_addr and va <= max_addr:
+                    if x.Characteristics & IMAGE_SCN_MEM_EXECUTE != 0:
+                        return True
         elif self.format == "ELF":
             for x in self.elf.secnames:
                 if va >= self.elf.secnames[x].sh_addr and va < self.elf.secnames[x].sh_addr + self.elf.secnames[x].sh_size:
@@ -419,8 +427,9 @@ class CPyew:
         self.log()
         self.processor="python"
 
-    def createIntelFunctionsByPrologs(self):
-        total = 0
+    def getAnalysisObject(self):
+        if self._anal is not None:
+            return self._anal
         
         anal=CX86CodeAnalyzer(self)
         anal.timeout = self.analysis_timeout
@@ -433,6 +442,89 @@ class CPyew:
         anal.xrefs_from = self.xrefs_from
         anal.basic_blocks = self.basic_blocks
         anal.function_stats = self.function_stats
+        self._anal = anal
+        
+        return anal
+
+    def resolveName(self, ops):
+        orig = str(ops)
+        ops = str(ops)
+        if ops.startswith("["):
+            ops = ops.replace("[", "").replace("]", "")
+        
+        try:
+            ops = int(ops, 16)
+        except ValueError:
+            return orig
+        
+        if ops in self.names:
+            return self.names[ops]
+        else:
+            return orig
+
+    def getEndingBasicBlocks(self, func):
+        bbs = []
+        for bb in func.nodes():
+            if func.hasParents(bb) and not func.hasChildren(bb):
+                off = int(bb.name)
+                if off not in self.basic_blocks:
+                    # this is an error, fixme!
+                    pass
+                else:
+                    bbs.append(self.basic_blocks[int(bb.name)])
+            elif not func.hasParents(bb) and not func.hasChildren(bb):
+                off = int(bb.name)
+                if off not in self.basic_blocks:
+                    # this is an error, fixme!
+                    pass
+                else:
+                    bbs.append(self.basic_blocks[int(bb.name)])
+        
+        return bbs
+
+    def getBasicBlockSize(self, bb):
+        size = 0
+        for ins in bb.instructions:
+            size += ins.size
+        return size
+
+    def getFunctionEnd(self, f):
+        func = self.flowgraphs[f]
+        end_bbs = self.getEndingBasicBlocks(func)
+        
+        max_offset = f
+        for bb in end_bbs:
+            last_offset = bb.offset + self.getBasicBlockSize(bb)
+            if last_offset > max_offset:
+                max_offset = last_offset
+        return max_offset
+
+    def createIntelFunctionsAtEnd(self):
+        anal = self.getAnalysisObject()
+        dones = []
+        while 1:
+            funcs = list(self.functions)
+            for f in funcs:
+                f_end = self.getFunctionEnd(f)
+                buf1 = self.getBytes(f_end, 16)
+                buf2 = buf1.lstrip("\xCC")
+                
+                # ignore all the 0xCC characters used for padding
+                # and, also, do not analyse if the next byte starts
+                # with a 0x00 because it's probably not an instruction
+                if buf1 != buf2 and not buf2.startswith("\x00"):
+                    off = f_end + len(buf1)-len(buf2)
+                    if off not in self.functions and off not in dones:
+                        anal.doCodeAnalysis(ep = False, addr = f_end + len(buf1)-len(buf2))
+                    dones.append(off)
+            
+            total = len(self.functions)
+            if total == len(funcs):
+                break
+
+    def createIntelFunctionsByPrologs(self):
+        total = 0
+        anal = self.getAnalysisObject()
         
         if self.type == 32:
             prologs = ["8bff558b", "5589e5"]
@@ -453,30 +545,18 @@ class CPyew:
             anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
         self.log("\n")
 
-    def resolveName(self, ops):
-        orig = str(ops)
-        ops = str(ops)
-        if ops.startswith("["):
-            ops = ops.replace("[", "").replace("]", "")
-        
-        try:
-            ops = int(ops, 16)
-        except ValueError:
-            return orig
-        
-        if ops in self.names:
-            return self.names[ops]
-        else:
-            return orig
-
     def findIntelFunctions(self):
-        anal = CX86CodeAnalyzer(self, self.type)
+        anal = self.getAnalysisObject()
         anal.timeout = self.analysis_timeout
         anal.doCodeAnalysis()
         
         if self.deepcodeanalysis:
             self.log("\b"*80 + "Searching typical function's prologs..." + " "*20)
             self.createIntelFunctionsByPrologs()
+            
+            if ANALYSIS_FUNCTIONS_AT_END:
+                self.log("\b"*80 + "Searching function's starting at the end of known functions..." + " "*20)
+                self.createIntelFunctionsAtEnd()
 
     def findFunctions(self, proc):
         if proc == "intel":
@@ -883,17 +963,22 @@ class CPyew:
                 
             return ret
 
+    def getDecoder(self, processor, type):
+        if type == 32:
+            decode = Decode32Bits
+        elif type == 16:
+            decode = Decode16Bits
+        elif type == 64:
+            decode = Decode64Bits
+        else:
+            raise EUnknownDisassemblyType()
+        
+        return decode
+
     def disassemble(self, buf, processor="intel", type=32, lines=40, bsize=512, baseoffset=0, marker=False):
         """ Disassemble a given buffer using Distorm """
         if processor == "intel":
-            if type == 32:
-                decode = Decode32Bits
-            elif type == 16:
-                decode = Decode16Bits
-            elif type == 64:
-                decode = Decode64Bits
-            else:
-                raise EUnknownDisassemblyType()
+            decode = self.getDecoder(processor, type)
             
             pos = 0
             ret = ""
@@ -979,7 +1064,7 @@ class CPyew:
                         #comment = "\t; Function %s" % self.names[i.offset]
                     else:
                         comment = ""
-                        ana = CX86CodeAnalyzer(self)
+                        ana = self.getAnalysisObject()
                         val, isimport, isbreak = ana.resolveAddress(ops)
                         if val is not None and str(val).isdigit():
                             addr = int(val)
@@ -1175,7 +1260,6 @@ class CPyew:
             for addr in self.names:
                 if self.names[addr] == arg:
                     f = addr
-                    print f, addr, arg
         
         return f
 

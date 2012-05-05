@@ -3,7 +3,7 @@
 """
 This file is part of Pyew
 
-Copyright (C) 2009, 2010 Joxean Koret
+Copyright (C) 2009, 2010, 2011, 2012 Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 import time
+
+from graphs import CNode, CGraph
 
 class CX86CallGraph(object):
     def __init__(self):
@@ -81,13 +83,14 @@ class CX86CodeAnalyzer:
         
         return False
 
-    def resolveAddress(self, addr):
+    def resolveAddress(self, addr, ignore_brace=False):
         addr = str(addr)
-        if addr.find("[") > -1:
+        if addr.find("[") > -1 and not ignore_brace:
             addr = addr.strip(" ")
             addr = addr.strip("[").strip("]")
             if addr.find("+") > -1 or addr.find("-") > -1:
-                return addr, False, True
+                # horrible!!!!
+                return self.resolveAddress(addr, True)
             
             name = self.pyew.resolveName(addr)
             if name in self._imports:
@@ -295,6 +298,7 @@ class CX86CodeAnalyzer:
                             lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
                         else:
                             break_bb = 2
+            
             elif mnem.startswith("J") or mnem.startswith("LOOP"):
                 # Break the basic block without clearing 'lines' as we will set
                 # the value here
@@ -361,17 +365,6 @@ class CX86CodeAnalyzer:
             f.basic_blocks.append(bb)
             self.basic_blocks[bb.instructions[0].offset] = bb
         
-        """
-        for bb in f.basic_blocks:
-            for i in bb.instructions:
-                try:
-                    x = "0x%08x" % self.pyew.getVirtualAddressFromOffset(int(str(i[2]), 16))
-                except:
-                    x = i[2]
-                print "%08x" % self.pyew.getVirtualAddressFromOffset(int(i[0])), i[1], x
-            print "--"
-        raw_input("Guay?")
-        """
         self.functions[f.address] = f
         addr = None
 
@@ -444,6 +437,112 @@ class CX86CodeAnalyzer:
         
         self.analyzeArea(self.pyew.ep)
 
+    def buildCallGraph(self):
+        g = CGraph()
+        ep = self.pyew.ep
+        
+        try:
+            l = self.pyew.exports.keys()
+            l.append(self.pyew.ep)
+        except:
+            print "Error:", sys.exc_info()[1]
+            l = [self.pyew.ep]
+        
+        functions = []
+        nodes = {}
+        
+        """ Compute the entry points initial graph """
+        for ep in l:
+            if self.pyew.functions.has_key(ep):
+                fep = self.pyew.functions[ep]
+                for c in fep.connections:
+                    if c in self.pyew.functions:
+                        if c not in functions:
+                            functions.append(c)
+                        
+                        if self.pyew.names[ep] not in nodes:
+                            n1 = CNode(self.pyew.names[ep])
+                            nodes[self.pyew.names[ep]] = n1
+                        else:
+                            n1 = nodes[self.pyew.names[ep]]
+                        
+                        if self.pyew.names[c] not in nodes:
+                            n2 = CNode(self.pyew.names[c])
+                            nodes[self.pyew.names[c]] = n2
+                        else:
+                            n2 = nodes[self.pyew.names[c]]
+                        g.addEdge(n1, n2)
+        
+        """ Add all the remaining functions """
+        dones = []
+        while len(functions) > 0:
+            addr = functions.pop()
+            f = self.pyew.functions[addr]
+            for c in f.connections:
+                if c in self.pyew.functions and c not in dones:
+                    functions.append(c)
+                    dones.append(c)
+                    
+                    if self.pyew.names[addr] not in nodes:
+                        n1 = CNode(self.pyew.names[addr])
+                        nodes[self.pyew.names[addr]] = n1
+                    else:
+                        n1 = nodes[self.pyew.names[addr]]
+                    
+                    if self.pyew.names[c] not in nodes:
+                        n2 = CNode(self.pyew.names[c])
+                        nodes[self.pyew.names[c]] = n2
+                    else:
+                        n2 = nodes[self.pyew.names[c]]
+                    g.addEdge(n1, n2)
+        return g
+
+    def buildFlowGraph(self, f):
+        fg = CGraph()
+        func = self.pyew.functions[f]
+        bbs = {}
+        nodes = {}
+        for bb in func.basic_blocks:
+            instructions = []
+            bb_start = bb.instructions[0].offset
+            end_offset = bb.instructions[-1].offset
+            bb_end = end_offset + bb.instructions[-1].size
+            
+            buf = self.pyew.getBytes(bb_start, bb_end-bb_start)
+            instructions = self.pyew.disassemble(buf=buf, baseoffset=bb_start, marker=False)
+            instructions = instructions.split("\n")
+            if instructions[-1] == "":
+                del instructions[len(instructions)-1]
+            
+            bbs[bb_start] = instructions
+            bbs[end_offset] = instructions
+            
+            n = CNode(str(bb.offset), data=instructions)
+            fg.addNode(n)
+            nodes[bb.offset] = n
+        
+        for bb in func.basic_blocks:
+            for conn in bb.connections:
+                a, b = conn
+                next_head = self.pyew.NextHead(bb.instructions[-1].offset)
+                if nodes.has_key(b) and nodes.has_key(bb.offset):
+                    if len(bb.connections) == 1:
+                        color = 0 # edge always
+                    elif next_head == b:
+                        color = 2 # edge false or unknown
+                    else:
+                        color = 1 # edge true
+                    
+                    fg.addEdge(nodes[bb.offset], nodes[b], value=color)
+        
+        return fg
+
+    def buildFlowGraphs(self):
+        fg = {}
+        for f in self.functions:
+            fg[f] = self.buildFlowGraph(f)
+        return fg
+
     def doCodeAnalysis(self, ep=True, addr=None):
         self.start_time = time.time()
         if ep:
@@ -476,6 +575,8 @@ class CX86CodeAnalyzer:
         self.pyew.basic_blocks = self.basic_blocks
         self.pyew.function_stats = self.function_stats
         self.pyew.program_stats = self.calculeStats()
+        self.pyew.callgraph = self.buildCallGraph()
+        self.pyew.flowgraphs = self.buildFlowGraphs()
         self.pyew.seek(0)
 
     def calculeStats(self):

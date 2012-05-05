@@ -39,6 +39,9 @@ class CCallGraphGenerator(object):
         self.pyew = pyew
 
     def generateDot(self, func=None):
+        if func is None:
+            return self.pyew.callgraph.toDot()
+        
         dot = CDotDiagram()
         if func is None:
             ep = self.pyew.ep
@@ -82,7 +85,8 @@ class CCallGraphGenerator(object):
                     n2 = CNode(self.pyew.names[c], self.pyew.names[c])
                     dot.addConnectedNode(n1, n2)
                     
-        return dot.generateDot()
+        x = dot.generateDot()
+        return x
 
 class CFlowGraphGenerator(object):
     def __init__(self, pyew):
@@ -214,10 +218,8 @@ def showBinaryImage(pyew, doprint=True, args=None):
 
     return filename
 
-if hasPil:
-    functions = {"cgraph":showCallGraph,
-                 "fgraph":showFlowGraph,
-                 "binvi":showBinaryImage}
-else:
-    functions = {"cgraph":showCallGraph}
+functions = {"cgraph":showCallGraph,
+             "fgraph":showFlowGraph}
 
+if hasPil:
+    functions["binvi"] = showBinaryImage

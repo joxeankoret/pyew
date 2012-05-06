@@ -2,6 +2,8 @@
 
 import sys
 import random
+import pefile
+
 from pyew_core import CPyew
 
 class CPatcher:
@@ -9,13 +11,13 @@ class CPatcher:
     self.binary = binary
     self.sc = sc
     self.out = out
-    self.pyew = CPyew(False, True)
+    self.pyew = CPyew(False, False)
     
     self.sc_buf = None
 
   def loadFiles(self):
     try:
-      #self.pyew.deepcodeanalysis = True
+      self.pyew.deepcodeanalysis = False
       print "[+] Loading and analysing file %s" % self.binary
       self.pyew.loadFile(self.binary)
     except:
@@ -41,11 +43,22 @@ class CPatcher:
     buf = self.pyew.getBuffer()
     out_buf = buf[:off] + self.sc_buf + buf[off+len(self.sc_buf):]
     
+    # Adjust section's privileges for PE files
+    if self.pyew.format == "PE":
+      pe = pefile.PE(data=out_buf)
+      IMAGE_SCN_MEM_WRITE = 0x80000000L
+      for section in pe.sections:
+        if off >= section.PointerToRawData and off <= section.PointerToRawData+section.SizeOfRawData:
+          section.Characteristics |= IMAGE_SCN_MEM_WRITE
+    
     try:
       print "[+] Writing output file %s" % self.out
-      f = open(self.out, "wb")
-      f.write(out_buf)
-      f.close()
+      if self.pyew.format == "PE":
+        f = open(self.out, "wb")
+        f.write(out_buf)
+        f.close()
+      else:
+        pe.write(self.out)
       return True
     except:
       print "[!] Error writing output file", sys.exc_info()[1]

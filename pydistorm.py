@@ -99,7 +99,7 @@ def Decode(codeOffset, code, dt=Decode32Bits):
     # Prepare arguments
     codeLen = len(code)
     code = addressof(code_buffer)
-    while codeLen:
+    while codeLen > -1:
         # Call internal decoder
         res = decode_func(codeOffset, code, codeLen, dt, result, MAX_INSTRUCTIONS, byref(decodedInstructionsCount))
 

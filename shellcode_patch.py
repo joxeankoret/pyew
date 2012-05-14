@@ -46,14 +46,15 @@ class CPatcher:
     # Adjust section's privileges for PE files
     if self.pyew.format == "PE":
       pe = pefile.PE(data=out_buf)
-      IMAGE_SCN_MEM_WRITE = 0x80000000L
+      IMAGE_SCN_MEM_READWRITEEXEC = 0xe0000000L
       for section in pe.sections:
         if off >= section.PointerToRawData and off <= section.PointerToRawData+section.SizeOfRawData:
-          section.Characteristics |= IMAGE_SCN_MEM_WRITE
+          print "[+] Patching section %s" % section.Name
+          section.Characteristics |= IMAGE_SCN_MEM_READWRITEEXEC
     
     try:
       print "[+] Writing output file %s" % self.out
-      if self.pyew.format == "PE":
+      if self.pyew.format != "PE":
         f = open(self.out, "wb")
         f.write(out_buf)
         f.close()

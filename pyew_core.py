@@ -507,9 +507,10 @@ class CPyew:
             for f in funcs:
                 f_end = self.getFunctionEnd(f)
                 buf1 = self.getBytes(f_end, 16)
-                buf2 = buf1.lstrip("\xCC")
-                
-                # ignore all the 0xCC characters used for padding
+                # strip the typical padding characters
+                buf2 = buf1.lstrip("\xCC").lstrip("\x90")
+
+                # ignore all the 0xCC/0x90 characters used for padding
                 # and, also, do not analyse if the next byte starts
                 # with a 0x00 because it's probably not an instruction
                 if buf1 != buf2 and not buf2.startswith("\x00"):

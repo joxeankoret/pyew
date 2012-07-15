@@ -251,10 +251,9 @@ class CPyew:
         return self.getBytes(offset, 1)
     
     def getBytes(self, offset, num):
-        moffset = self.offset
         self.f.seek(offset)
         buf = self.f.read(num)
-        self.seek(moffset)
+        self.seek(self.offset)
         return buf
 
     def getVirtualAddressFromOffset(self, offset):
@@ -1105,11 +1104,10 @@ class CPyew:
             if i:
                 self.lastasmoffset = i.offset + i.size
         elif processor == "python":
-            moffset = self.offset
             self.seek(0)
             buf = self.f.read()
             self.log(dis.dis(buf))
-            self.seek(moffset)
+            self.seek(self.offset)
             ret = ""
         
         return ret
@@ -1244,10 +1242,9 @@ class CPyew:
         return hints
 
     def getBuffer(self):
-        moffset = self.offset
         self.f.seek(0)
         buf = self.f.read()
-        self.seek(moffset)
+        self.seek(self.offset)
         
         return buf
 

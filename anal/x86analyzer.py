@@ -72,17 +72,6 @@ class CX86CodeAnalyzer:
         self.last_msg_size = 0
         self.start_time = 0
 
-    def belongsTo(self, offset, func):
-        if not self.functions.has_key(func):
-            return False
-        
-        for x in self.functions[func].basic_blocks:
-            for n in x.instructions:
-                if n == offset:
-                    return True
-        
-        return False
-
     def resolveAddress(self, addr, ignore_brace=False):
         addr = str(addr)
         if addr.find("[") > -1 and not ignore_brace:
@@ -124,14 +113,11 @@ class CX86CodeAnalyzer:
 
     def breakBasicBlock(self, bbaddr, l, lines, f):
         bb_addrs = []
-        for ins in self.basic_blocks[bbaddr].instructions:
-            bb_addrs.append(ins.offset)
-        
         # Removed addresses belonging to the new basic block and fill new one
         new_bb = CX86BasicBlock()
         new_bb.offset = l.offset
         i = 0
-        for ins in list(self.basic_blocks[bbaddr].instructions):
+        for ins in self.basic_blocks[bbaddr].instructions:
             bb_addrs.append(ins.offset)
             if ins.offset < l.offset:
                 self.basic_blocks[bbaddr].instructions = self.basic_blocks[bbaddr].instructions[:i+1]
@@ -522,9 +508,9 @@ class CX86CodeAnalyzer:
             nodes[bb.offset] = n
         
         for bb in func.basic_blocks:
+            next_head = self.pyew.NextHead(bb.instructions[-1].offset)
             for conn in bb.connections:
                 a, b = conn
-                next_head = self.pyew.NextHead(bb.instructions[-1].offset)
                 if nodes.has_key(b) and nodes.has_key(bb.offset):
                     if len(bb.connections) == 1:
                         color = 0 # edge always

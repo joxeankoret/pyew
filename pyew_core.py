@@ -236,9 +236,6 @@ class CPyew:
         obj = self.disasm(offset, self.processor, self.type, 1)
         return offset + obj[0].size
 
-    def GetMnem(self, offset):
-        return self.GetMnems(offset, num)
-
     def GetMnems(self, offset, num):
         obj = self.disasm(offset, self.processor, self.type, num)
         ret = []

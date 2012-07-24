@@ -900,7 +900,7 @@ class CPyew:
                     return s
             return None
 
-    def getDisassembleObject(self, obj, idx=0):
+    def getDisassembleObject(self, obj):
         if type(obj) is tuple:
             ret = CDisObj()
             ret.offset = obj[0]

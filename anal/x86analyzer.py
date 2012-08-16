@@ -137,7 +137,7 @@ class CX86CodeAnalyzer:
         f.basic_blocks.append(new_bb)
         
         # Remove the next lines from 'lines'
-        while 1:
+        while len(lines) > 0:
             if len(lines) > 0:
                 tmp_line = lines[0]
                 if tmp_line.offset in bb_addrs:
@@ -171,11 +171,7 @@ class CX86CodeAnalyzer:
         #   2 = Break the basic block and clear 'lines'
         #
         break_bb = 0
-        analyzed_total = 0
         
-        i = 0
-        
-        #
         # Iterate while there is at least one more line of code
         # or there is some address to follow (in list flow)
         #
@@ -211,8 +207,6 @@ class CX86CodeAnalyzer:
                                 lines, f = self.breakBasicBlock(bbaddr, l, lines, f)
                                 break
                         continue
-                else:
-                    analyzed_total = 0
             else:
                 #flow.reverse()
                 naddr = flow.pop()
@@ -331,7 +325,6 @@ class CX86CodeAnalyzer:
                         f.addOutConnection(offset)
                         self.queue.append(offset)
             
-            i += 1
             # Do we have to clear anything?
             if break_bb != 0:
                 if len(bb.instructions) > 0:
@@ -343,7 +336,6 @@ class CX86CodeAnalyzer:
                 if break_bb == 2:
                     # ...and clear 'lines' if required
                     lines = []
-                    i = 0
                 
                 break_bb = 0
         

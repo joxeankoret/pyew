@@ -27,7 +27,6 @@ import sys
 import dis
 import time
 import pickle
-import pprint
 import urllib
 import operator
 import StringIO
@@ -36,7 +35,6 @@ from gzip import GzipFile
 
 from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT, \
                    ANALYSIS_FUNCTIONS_AT_END
-from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
 from safer_pickle import SafeUnpickler
 
 try:
@@ -57,15 +55,31 @@ try:
 except ImportError:
     hasDebug = False
 
-from binascii import unhexlify, hexlify
+from binascii import unhexlify
 
 try:
     from pydistorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-except:
+    has_pydistorm = True
+except ImportError:
+    has_pydistorm = False
+
+if not has_pydistorm:
     try:
         from distorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-    except:
-        pass
+        has_distorm = True
+    except ImportError:
+        has_distorm = False
+else:
+    has_distorm = False
+
+if not has_distorm and not has_pydistorm:
+    try:
+        from pyms_iface import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+        has_pyms = True
+    except ImportError:
+        has_pyms = False
+else:
+    has_pyms = False
 
 from config import PLUGINS_PATH
 from anal.x86analyzer import CX86CodeAnalyzer
@@ -520,7 +534,6 @@ class CPyew:
                 break
 
     def createIntelFunctionsByPrologs(self):
-        total = 0
         anal = self.getAnalysisObject()
         
         if self.type == 32:
@@ -605,7 +618,7 @@ class CPyew:
             
             for x in self.elf.symbols:
                 if x.name != "" and x.st_value != 0:
-                    self.names[name] = x.st_value
+                    self.names[x.name] = x.st_value
         except:
             pass
         
@@ -632,20 +645,20 @@ class CPyew:
             
         try:
             addr = None
-            
-            for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:
-                
-                try:
-                    addr = self.pe.get_offset_from_rva(exp.address)
-                except:
-                    addr = exp.address
-                
-                if exp.name and exp.name != "":
-                    self.names[addr] = exp.name
-                    self.exports[addr] = exp.name
-                else:
-                    self.names[addr] = expordinal
-                    self.exports[addr] = "#" + str(expordinal)
+
+            if 'DIRECTORY_ENTRY_EXPORT' in dir(pe):
+                for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:                
+                    try:
+                        addr = self.pe.get_offset_from_rva(exp.address)
+                    except:
+                        addr = exp.address
+                    
+                    if exp.name and exp.name != "":
+                        self.names[addr] = exp.name
+                        self.exports[addr] = exp.name
+                    else:
+                        self.names[addr] = exp.ordinal
+                        self.exports[addr] = "#" + str(exp.ordinal)
         except:
             pass
         
@@ -691,7 +704,7 @@ class CPyew:
             
             x = x - s.VirtualAddress
             x += s.PointerToRawData
-            ep = x
+
             self.log("Entry Point at 0x%x" % x)
             try:
                 self.log("Virtual Address is 0x%0x" % (self.pe.OPTIONAL_HEADER.ImageBase + self.pe.get_rva_from_offset(x)))
@@ -754,7 +767,6 @@ class CPyew:
         
         self.last_regs = last_regs
         print
-        offset = self.getOffsetFromVirtualAddress(addr)
         print self.disassemble(self.dbg.readMemory(addr, self.bsize), type=self.type, baseoffset=addr, lines=self.lines/2, marker=True)
 
     def debugHandler(self, command):
@@ -927,8 +939,7 @@ class CPyew:
             ret.operands = str(obj.operands)
             ret.instructionHex = obj.instructionHex
             return ret
-            #return obj
-    
+
     def disasm(self, offset=0, processor="intel", mtype=32, lines=1, bsize=512):
         if processor == "intel":
             if mtype == 32:
@@ -949,7 +960,10 @@ class CPyew:
             except OverflowError:
                 # OverflowError: long int too large to convert to int
                 return []
-            
+
+            if has_pyms:
+              offset = self.ep
+
             for i in Decode(offset, buf, decode):
                 i = self.getDisassembleObject(i, ilines)
                 ret.append(i)
@@ -957,7 +971,7 @@ class CPyew:
                 
                 if ilines == lines:
                     break
-                
+
             return ret
 
     def getDecoder(self, processor, type):

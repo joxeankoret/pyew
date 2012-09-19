@@ -33,13 +33,6 @@ from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_ne
 from config import PLUGINS_PATH, DATABASE_PATH
 
 try:
-    import psyco
-    psyco.log()
-    psyco.full()
-except ImportError:
-    pass
-
-try:
     import readline
     
     histfile = os.path.join(os.environ["HOME"], ".pyew")

@@ -55,9 +55,9 @@ class CX86BasicBlock(object):
 
 class CX86CodeAnalyzer:
     timeout=300
-    def __init__(self, pyew, type="PE"):
+    def __init__(self, pyew, _type="PE"):
         self.pyew = pyew
-        self.type = type
+        self.type = _type
         self.names = {}
         self.queue = ()
         self._imports = self.pyew.imports.values()
@@ -407,7 +407,6 @@ class CX86CodeAnalyzer:
 
     def analyzeEntryPoint(self):
         try:
-            exports = self.pyew.exports
             self.queue = self.pyew.exports.keys()
         except:
             # Just ignore the exception
@@ -543,7 +542,7 @@ class CX86CodeAnalyzer:
                 if exp.name and exp.name != "":
                     self.pyew.names[addr] = exp.name
                 else:
-                    self.pyew.names[addr] = expordinal
+                    self.pyew.names[addr] = exp.ordinal
         except:
             pass
         

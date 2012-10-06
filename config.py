@@ -12,3 +12,6 @@ DATABASE_PATH=os.path.dirname(__file__) + os.sep + "files.sqlite"
 # can be enabled. It tries to find new functions starting at the end address
 # of currently known functions
 ANALYSIS_FUNCTIONS_AT_END=True
+
+# Experimental: use the pure python x86 disassembler pymsasid?
+PURE_PYTHON_DISASM=False

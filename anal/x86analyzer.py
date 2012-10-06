@@ -23,35 +23,64 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import time
 
+from collections import deque
+
 from graphs import CNode, CGraph
+
+try:
+    import code, traceback, signal
+    signal_handler = True
+except:
+    signal_handler = False
+
+def debug(sig, frame):
+    """Interrupt running process, and provide a python prompt for
+    interactive debugging."""
+    d={'_frame':frame}         # Allow access to frame object.
+    d.update(frame.f_globals)  # Unless shadowed by global
+    d.update(frame.f_locals)
+    
+    i = code.InteractiveConsole(d)
+    message  = "Signal recieved : entering python shell.\nTraceback:\n"
+    message += ''.join(traceback.format_stack(frame))
+    print
+    print message
+    print
+    i.interact(message)
+
+def listen():
+    signal.signal(signal.SIGUSR1, debug)  # Register handler
+
+if signal_handler:
+    listen()
 
 class CX86CallGraph(object):
     def __init__(self):
         self.functions = []
-        self.connections = []
+        self.connections = set()
 
 class CX86Function(object):
     def __init__(self, addr):
         self.address = addr
         self.basic_blocks = []
-        self.edges = []
-        self.connections = []
-        self.stats = []
+        self.edges = set()
+        self.connections = set()
+        self.stats = set()
 
     def addOutConnection(self, conn):
         if conn not in self.connections:
-            self.connections.append(conn)
+            self.connections.add(conn)
 
 class CX86BasicBlock(object):
     def __init__(self):
         self.instructions = []
-        self.inrefs = []
-        self.connections = []
+        self.inrefs = set()
+        self.connections = set()
         self.offset = 0
     
     def addConnection(self, afrom, ato):
         if (afrom, ato) not in self.connections:
-            self.connections.append((afrom, ato))
+            self.connections.add((afrom, ato))
 
 class CX86CodeAnalyzer:
     timeout=300
@@ -59,15 +88,15 @@ class CX86CodeAnalyzer:
         self.pyew = pyew
         self.type = _type
         self.names = {}
-        self.queue = ()
+        self.queue = set()
         self._imports = self.pyew.imports.values()
-        self.analyzed = []
+        self.analyzed = set()
         self.functions = {}
         self.function_stats = {}
         self.basic_blocks = {}
         self.xrefs_to = {}
         self.xrefs_from = {}
-        self.antidebug = []
+        self.antidebug = set()
         
         self.last_msg_size = 0
         self.start_time = 0
@@ -112,13 +141,13 @@ class CX86CodeAnalyzer:
             self.xrefs_from[afrom] = [ato]
 
     def breakBasicBlock(self, bbaddr, l, lines, f):
-        bb_addrs = []
+        bb_addrs = set()
         # Removed addresses belonging to the new basic block and fill new one
         new_bb = CX86BasicBlock()
         new_bb.offset = l.offset
         i = 0
         for ins in self.basic_blocks[bbaddr].instructions:
-            bb_addrs.append(ins.offset)
+            bb_addrs.add(ins.offset)
             if ins.offset < l.offset:
                 self.basic_blocks[bbaddr].instructions = self.basic_blocks[bbaddr].instructions[:i+1]
             else:
@@ -131,9 +160,9 @@ class CX86CodeAnalyzer:
         for conn in conns:
             afrom, ato = conn
             if afrom <= l.offset:
-                self.basic_blocks[bbaddr].connections.append((afrom, ato))
+                self.basic_blocks[bbaddr].connections.add((afrom, ato))
             else:
-                new_bb.connections.append((afrom, ato))
+                new_bb.connections.add((afrom, ato))
         f.basic_blocks.append(new_bb)
         
         # Remove the next lines from 'lines'
@@ -153,16 +182,16 @@ class CX86CodeAnalyzer:
         if addr in self.analyzed or addr in self.functions:
             #print "Function %08x already analyzed" % addr
             return
-        
+
         # First, create a function object. Then, disassemble the 1st 100 lineal
         # instructions given an offset (addr)
         #
         self.names[addr] = "sub_%08x" % addr
         f = CX86Function(addr)
-        lines = self.pyew.disasm(addr, self.pyew.processor, self.pyew.type, 100, 1500)
+        lines = self.pyew.disasm(abs(addr), self.pyew.processor, self.pyew.type, 100, 1500)
         bb = CX86BasicBlock()
         bb.offset = addr
-        flow = []
+        flow = deque() # set()
         
         # Possible values for break_bb are:
         #
@@ -176,6 +205,9 @@ class CX86CodeAnalyzer:
         # or there is some address to follow (in list flow)
         #
         while len(lines) > 0 or len(flow) > 0:
+            if self.timeout != 0 and time.time() > self.start_time + self.timeout:
+                raise Exception("Code analysis for x86 timed-out")
+
             if len(lines) > 0:
                 # Extract and remove the fist element in the list of lineally
                 # disassembled instructions
@@ -186,7 +218,7 @@ class CX86CodeAnalyzer:
                 if l.offset in self.analyzed:
                     # Already analyzed
                     if l.offset in self.basic_blocks:
-                        lines = []
+                        lines = set()
                         if len(bb.instructions) > 0:
                             bb.addConnection(bb.instructions[-1].offset, l.offset)
                             # Save the current basic block
@@ -201,6 +233,9 @@ class CX86CodeAnalyzer:
                         # case split the basic block into smaller, but correct,
                         # basic blocks
                         for bbaddr in list(self.basic_blocks):
+                            if self.timeout != 0 and time.time() > self.start_time + self.timeout:
+                                raise Exception("Code analysis for x86 timed-out")
+
                             bb_start = bbaddr
                             bb_end = self.basic_blocks[bbaddr].instructions[-1].offset
                             if l.offset > bb_start and l.offset < bb_end:
@@ -231,14 +266,15 @@ class CX86CodeAnalyzer:
             
             mnem = str(l.mnemonic).upper()
             # Set the current offset as already analyzed
-            self.analyzed.append(l.offset)
+            self.analyzed.add(l.offset)
             
             # Check for typical antidebuggin/antiemulation techniques before
             # doing anything else
             if mnem.startswith("INT") or mnem.startswith("UD") or \
-                 mnem.startswith("RDTSC") or mnem.find("IDT") > -1 or \
-                 mnem.startswith("CPU") or mnem.find("GDT") > -1 or \
-                 mnem.startswith("SYS") or (mnem == "NOP" and str(l.operands) != ""):
+               mnem.startswith("RDTSC") or mnem.find("IDT") > -1 or \
+               mnem.startswith("CPU") or mnem.find("GDT") > -1 or \
+               mnem.startswith("SYS") or (mnem == "NOP" and \
+               str(l.operands) != ""):
                 self.antidebug.append((l.offset, str(l.mnemonic)))
             
             if self.basic_blocks.has_key(l.offset):
@@ -270,7 +306,7 @@ class CX86CodeAnalyzer:
                         if val not in self.queue and val not in self.analyzed and \
                            val != l.offset + l.size:
                             #print "Adding to queue %08x" % val
-                            self.queue.append(val)
+                            self.queue.add(val)
                     elif mnem == "JMP":
                         # Follow the jump if resolvable
                         #if type(val) is int:
@@ -323,7 +359,7 @@ class CX86CodeAnalyzer:
                     if self.pyew.executableMemory(addr):
                         offset = self.pyew.getOffsetFromVirtualAddress(addr)
                         f.addOutConnection(offset)
-                        self.queue.append(offset)
+                        self.queue.add(offset)
             
             # Do we have to clear anything?
             if break_bb != 0:
@@ -335,7 +371,7 @@ class CX86CodeAnalyzer:
                 bb = CX86BasicBlock()
                 if break_bb == 2:
                     # ...and clear 'lines' if required
-                    lines = []
+                    lines = set()
                 
                 break_bb = 0
         
@@ -352,7 +388,7 @@ class CX86CodeAnalyzer:
             return
         
         for bb in self.functions[addr].basic_blocks:
-            self.functions[addr].connections += bb.connections
+            self.functions[addr].connections.union(bb.connections)
         
         nodes = len(self.functions[addr].basic_blocks)
         edges = len(self.functions[addr].connections)
@@ -363,9 +399,9 @@ class CX86CodeAnalyzer:
 
     def analyzeArea(self, addr):
         if len(self.queue) == 0:
-            self.queue = [addr]
+            self.queue = set([addr])
         else:
-            self.queue.append(addr)
+            self.queue.add(addr)
         
         while addr is not None and len(self.queue) > 0:
             if self.timeout != 0 and time.time() > self.start_time + self.timeout:
@@ -386,6 +422,9 @@ class CX86CodeAnalyzer:
                 #print self.queue
         
         for f in self.functions:
+            if self.timeout != 0 and time.time() > self.start_time + self.timeout:
+                raise Exception("Code analysis for x86 timed-out")
+
             if len(self.functions[f].basic_blocks) == 1:
                 if len(self.functions[f].basic_blocks[0].instructions) >= 1:
                     x = self.functions[f].basic_blocks[0].instructions[0]
@@ -407,7 +446,7 @@ class CX86CodeAnalyzer:
 
     def analyzeEntryPoint(self):
         try:
-            self.queue = self.pyew.exports.keys()
+            self.queue = set(self.pyew.exports.keys())
         except:
             # Just ignore the exception
             pass
@@ -419,11 +458,12 @@ class CX86CodeAnalyzer:
         ep = self.pyew.ep
         
         try:
-            l = self.pyew.exports.keys()
-            l.append(self.pyew.ep)
+            l = set(self.pyew.exports.keys())
+            l.add(self.pyew.ep)
         except:
             print "Error:", sys.exc_info()[1]
-            l = [self.pyew.ep]
+            l = set([self.pyew.ep])
+            raise
         
         functions = []
         nodes = {}
@@ -451,14 +491,14 @@ class CX86CodeAnalyzer:
                         g.addEdge(n1, n2)
         
         """ Add all the remaining functions """
-        dones = []
+        dones = set()
         while len(functions) > 0:
             addr = functions.pop()
             f = self.pyew.functions[addr]
             for c in f.connections:
                 if c in self.pyew.functions and c not in dones:
                     functions.append(c)
-                    dones.append(c)
+                    dones.add(c)
                     
                     if self.pyew.names[addr] not in nodes:
                         n1 = CNode(self.pyew.names[addr])
@@ -480,7 +520,7 @@ class CX86CodeAnalyzer:
         bbs = {}
         nodes = {}
         for bb in func.basic_blocks:
-            instructions = []
+            instructions = set()
             bb_start = bb.instructions[0].offset
             end_offset = bb.instructions[-1].offset
             bb_end = end_offset + bb.instructions[-1].size
@@ -557,15 +597,15 @@ class CX86CodeAnalyzer:
         self.pyew.seek(0)
 
     def calculeStats(self):
-        nodes = []
-        edges = []
-        ccs = []
+        nodes = set()
+        edges = set()
+        ccs = set()
         
         for f in self.functions:
             n, e, c = self.functions[f].stats
-            nodes.append(n)
-            edges.append(e)
-            ccs.append(c)
+            nodes.add(n)
+            edges.add(e)
+            ccs.add(c)
         
         hash = {}
         hash["nodes"] = {}

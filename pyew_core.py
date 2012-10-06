@@ -34,7 +34,7 @@ import StringIO
 from gzip import GzipFile
 
 from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT, \
-                   ANALYSIS_FUNCTIONS_AT_END
+                   ANALYSIS_FUNCTIONS_AT_END, PURE_PYTHON_DISASM
 from safer_pickle import SafeUnpickler
 
 try:
@@ -57,20 +57,25 @@ except ImportError:
 
 from binascii import unhexlify
 
-try:
-    from pydistorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-    has_pydistorm = True
-except ImportError:
-    has_pydistorm = False
-
-if not has_pydistorm:
-    try:
-        from distorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-        has_distorm = True
-    except ImportError:
-        has_distorm = False
+# we may want to switch to the pure python disasssembler, for some reason...
+if not PURE_PYTHON_DISASM:
+  try:
+      from pydistorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+      has_pydistorm = True
+  except ImportError:
+      has_pydistorm = False
+  
+  if not has_pydistorm:
+      try:
+          from distorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+          has_distorm = True
+      except ImportError:
+          has_distorm = False
+  else:
+      has_distorm = False
 else:
     has_distorm = False
+    has_pydistorm = False
 
 if not has_distorm and not has_pydistorm:
     try:
@@ -209,7 +214,7 @@ class CPyew:
         self.functions_address = {}
         self.xrefs_to = {}
         self.xrefs_from = {}
-        self.queue = []
+        self.queue = set()
         self.analyzed = []
         self.checking = []
         self.tocheck = []
@@ -333,7 +338,7 @@ class CPyew:
 
     def showSettings(self):
         for x in dir(self):
-            if x.startswith("_") or x in ["pe", "elf", "buf"] or operator.isCallable(eval("self." + x)) \
+            if x.startswith("_") or x in ["pe", "elf", "boot", "buf"] or operator.isCallable(eval("self." + x)) \
                or x in ["plugins", "names", "imports", "exports", "functions_address", \
                         "names", "functions", "xrefs_from", "xrefs_to", "antidebug", \
                         "function_stats", "basic_blocks"]:
@@ -396,6 +401,14 @@ class CPyew:
         new_pyew.f = open(new_pyew.filename, mode)
         return new_pyew
 
+    def loadBootSector(self):
+        self.format = "bootsector"
+        self.deepcodeanalysis = True
+        self.ep = 0
+        self.type = 16  
+        self.log("x86 Boot Sector")
+        self.findFunctions("intel")
+
     def fileTypeLoad(self):
         try:
             if self.buf.startswith("MZ") and hasPefile:
@@ -408,6 +421,8 @@ class CPyew:
                 self.loadPDF()
             elif self.buf.startswith("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"):
                 self.loadOle2()
+            elif self.getBytes(0x1fe, 2) == "\x55\xAA": # bootsector:
+                self.loadBootSector()
         except:
             print "Error loading file:", sys.exc_info()[1]
             if self.debug or self.batch:
@@ -545,6 +560,8 @@ class CPyew:
             hints += self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
         self.log("\b"*80 + "Found %d possible function(s) using method #1" % len(hints) + " "*20 + "\b"*80)
         for hint in hints:
+            if anal.timeout != 0 and time.time() > anal.start_time + anal.timeout:
+                raise Exception("Code analysis for x86 timed-out")
             anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
         
         prologs = ["558bec"]
@@ -552,6 +569,8 @@ class CPyew:
             hints += self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
         self.log("\b"*80 + "Found %d possible function(s) using method #2" % len(hints) + " "*20)
         for hint in hints:
+            if anal.timeout != 0 and time.time() > anal.start_time + anal.timeout:
+                raise Exception("Code analysis for x86 timed-out")
             anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
         self.log("\n")
 
@@ -667,6 +686,7 @@ class CPyew:
                 self.findFunctions(self.processor)
                 if not imps or len(self.functions) <= 1 and self.deepcodeanalysis:
                     self.createIntelFunctionsByPrologs()
+        self.seek(0)
 
     def loadPE(self):
         try:
@@ -880,6 +900,7 @@ class CPyew:
             self.offset = 0
         else:
             self.offset = pos
+        
         self.f.seek(self.offset)
         self.buf = self.f.read(self.bsize)
 
@@ -894,16 +915,17 @@ class CPyew:
         if not src:
             src = self.buf[:bsize]
         
-        N=0; result=''
+        N=0
+        result=[]
         while src:
             s,src = src[:length],src[length:]
             hexa = ' '.join(["%02X"%ord(x) for x in s])
             s = s.translate(FILTER)
-            result += "%04X   %-*s   %s\n" % (N+baseoffset, length*3, hexa, s)
+            result.append("%04X   %-*s   %s" % (N+baseoffset, length*3, hexa, s))
             N+=length
             if N>=bsize:
                 break
-        return result
+        return "\n".join(result)
 
     def belongToSection(self, x):
         if self.format == "PE":

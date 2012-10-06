@@ -57,30 +57,30 @@ if signal_handler:
 class CX86CallGraph(object):
     def __init__(self):
         self.functions = []
-        self.connections = set()
+        self.connections = []
 
 class CX86Function(object):
     def __init__(self, addr):
         self.address = addr
         self.basic_blocks = []
-        self.edges = set()
-        self.connections = set()
-        self.stats = set()
+        self.edges = []
+        self.connections = []
+        self.stats = []
 
     def addOutConnection(self, conn):
         if conn not in self.connections:
-            self.connections.add(conn)
+            self.connections.append(conn)
 
 class CX86BasicBlock(object):
     def __init__(self):
         self.instructions = []
         self.inrefs = set()
-        self.connections = set()
+        self.connections = []
         self.offset = 0
     
     def addConnection(self, afrom, ato):
         if (afrom, ato) not in self.connections:
-            self.connections.add((afrom, ato))
+            self.connections.append((afrom, ato))
 
 class CX86CodeAnalyzer:
     timeout=300
@@ -160,9 +160,9 @@ class CX86CodeAnalyzer:
         for conn in conns:
             afrom, ato = conn
             if afrom <= l.offset:
-                self.basic_blocks[bbaddr].connections.add((afrom, ato))
+                self.basic_blocks[bbaddr].connections.append((afrom, ato))
             else:
-                new_bb.connections.add((afrom, ato))
+                new_bb.connections.append((afrom, ato))
         f.basic_blocks.append(new_bb)
         
         # Remove the next lines from 'lines'
@@ -384,16 +384,17 @@ class CX86CodeAnalyzer:
 
     def calculateFunctionStats(self, addr):
         if not self.functions.has_key(addr):
-            #raw_input("Function doesn't exists?")
+            raw_input("Function doesn't exists?")
             return
-        
+
         for bb in self.functions[addr].basic_blocks:
-            self.functions[addr].connections.union(bb.connections)
+            self.functions[addr].connections += bb.connections
         
         nodes = len(self.functions[addr].basic_blocks)
         edges = len(self.functions[addr].connections)
         p = 2 # I know, I know...
         cc = edges - nodes + p
+
         self.functions[addr].stats = (nodes, edges, cc)
         self.function_stats[addr] = (nodes, edges, cc)
 
@@ -597,16 +598,17 @@ class CX86CodeAnalyzer:
         self.pyew.seek(0)
 
     def calculeStats(self):
-        nodes = set()
-        edges = set()
-        ccs = set()
+        nodes = []
+        edges = []
+        ccs = []
         
         for f in self.functions:
             n, e, c = self.functions[f].stats
-            nodes.add(n)
-            edges.add(e)
-            ccs.add(c)
-        
+            if n > 0 and e > 0 and c > 0:
+              nodes.append(n)
+              edges.append(e)
+              ccs.append(c)
+
         hash = {}
         hash["nodes"] = {}
         hash["nodes"]["max"] = max(nodes)

@@ -341,7 +341,7 @@ class CPyew:
             if x.startswith("_") or x in ["pe", "elf", "boot", "buf"] or operator.isCallable(eval("self." + x)) \
                or x in ["plugins", "names", "imports", "exports", "functions_address", \
                         "names", "functions", "xrefs_from", "xrefs_to", "antidebug", \
-                        "function_stats", "basic_blocks"]:
+                        "function_stats", "basic_blocks", "flowgraphs", "callgraph"]:
                 continue
             else:
                 self.log("pyew." + x.ljust(16) + ":", eval("self." + x))

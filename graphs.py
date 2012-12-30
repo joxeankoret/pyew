@@ -16,8 +16,7 @@ class CGmlGraph:
             
             buf += 'node [ id %s \n label "%s"\n fill "blue" \n type "oval"\n LabelGraphics [ type "text" ] ] \n' % (num, name)
         buf += "\n"
-        
-        i = 0
+
         for parent in self.g.d:
             p = nodes.index(parent)
             for child in self.g.d[parent]:
@@ -41,8 +40,7 @@ class CDotGraph:
             
             buf += ' a%s [shape=box, label = "%s", color="blue"]\n' % (num, name)
         buf += "\n"
-        
-        i = 0
+
         for parent in self.g.d:
             p = nodes.index(parent)
             for child in self.g.d[parent]:
@@ -439,7 +437,9 @@ def test3():
 
     g1.addGraph(g2)
     dot = g1.toDot()
+    print dot
     gml = g1.toGml()
+    print gml
 
 def randomGraph(totally=False):
     if totally:

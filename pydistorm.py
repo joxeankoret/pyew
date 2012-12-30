@@ -10,7 +10,8 @@ Python binding for diStorm64 written by Victor Stinner
 
 import sys
 import platform
-from ctypes import cdll, c_long, c_ulong, c_int, c_uint, c_char, c_char_p, POINTER, c_byte, Structure, addressof, byref, c_void_p, create_string_buffer, sizeof, cast
+from ctypes import cdll, c_long, c_ulong, c_int, c_uint, c_char, POINTER, \
+     Structure, addressof, byref, c_void_p, create_string_buffer, sizeof, cast
 
 # Define (u)int32_t and (u)int64_t types
 int32_t = c_int

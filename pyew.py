@@ -26,11 +26,10 @@ import sys
 import code
 import pprint
 import sqlite3
-import StringIO
 
 from binascii import unhexlify
-from hashlib import md5, sha1, sha224, sha256, sha384, sha512, new as hashlib_new
-from config import PLUGINS_PATH, DATABASE_PATH
+from hashlib import md5, sha1, sha256
+from config import DATABASE_PATH
 
 try:
     import readline
@@ -45,23 +44,11 @@ try:
 except:
     pass
 
-try:
-    import pefile
-    hasPefile = True
-except ImportError:
-    hasPefile = False
-    
-try:
-    from Elf import Elf
-    hasElf = True
-except ImportError:
-    hasElf = False
-
 from pyew_core import CPyew
 
 PROGRAM="PYEW! A Python tool like radare or *iew"
 VERSION=0x01020000
-HUMAN_VERSION="1.2.0.0"
+HUMAN_VERSION="1.3.0.0"
 
 def showHelp(pyew):
     print PROGRAM, "0x%x" % VERSION, "(%s)" % HUMAN_VERSION
@@ -356,12 +343,12 @@ def main(filename):
                 data = cmd.lower().split(" ")
                 if len(data) > 1:
                     if pyew.virtual:
-                        off = self.getVirtualAddressFromOffset(pyew.offset)
+                        off = pyew.getVirtualAddressFromOffset(pyew.offset)
                     else:
                         off = pyew.offset
                     if not data[1].startswith("/"):
-                        type = int(data[1])
-                        dis = pyew.disassemble(pyew.buf, pyew.processor, pyew.type, pyew.lines, pyew.bsize, baseoffset=off)
+                        mtype = int(data[1])
+                        dis = pyew.disassemble(pyew.buf, pyew.processor, mtype, pyew.lines, pyew.bsize, baseoffset=off)
                         print dis
                     else:
                         cmd = data[1:]
@@ -382,7 +369,6 @@ def main(filename):
                 dis = pyew.disassemble(pyew.buf, pyew.processor, pyew.type, pyew.lines, pyew.bsize, baseoffset=pyew.offset)
                 print dis
             elif cmd == "buf":
-                lines = 0
                 line = ""
                 for c in pyew.buf:
                     line += c
@@ -393,7 +379,6 @@ def main(filename):
                 if line != "":
                     print repr(line)
             elif cmd == "byte":
-                lines = 0
                 line = ""
                 for c in pyew.buf:
                     line += "0x%x, " % ord(c)

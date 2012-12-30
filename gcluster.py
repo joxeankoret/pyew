@@ -129,7 +129,6 @@ class CPrimesCluster(object):
             del pyew
         
         dones = []
-        size = len(primes)
         for h1 in values:
             for h2 in values:
                 if h1 == h2 or (h1, h2) in dones or (h2, h1) in dones:

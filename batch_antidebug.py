@@ -33,16 +33,14 @@ def checkAntidebug(path):
     if pyew.format not in ["PE", "ELF"]:
         return
 
-    msg = pyew.antidebug
-
-    if len(antidebug) > 0:
+    if len(pyew.antidebug) > 0:
         print
-        printData(pyew, path, msg)
+        printData(pyew, path, pyew.antidebug)
         print "Time to analyze %f" % (time.time() - t)
         print
 
 def doChecks(path):
-    do_basic_graph_analysis(path)
+    checkAntidebug(path)
 
 def main(path):
     buf = ""

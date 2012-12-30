@@ -276,10 +276,13 @@ class CPyew:
         return self.getBytes(offset, 1)
     
     def getBytes(self, offset, num):
-        self.f.seek(offset)
-        buf = self.f.read(num)
-        self.seek(self.offset)
-        return buf
+        try:
+            self.f.seek(offset)
+            buf = self.f.read(num)
+            self.seek(self.offset)
+            return buf
+        except:
+            return ""
 
     def getVirtualAddressFromOffset(self, offset):
         ret = None
@@ -301,8 +304,11 @@ class CPyew:
     def isVirtualAddress(self, va):
         ret = False
         if self.format == "PE":
-            # FIXME
-            pass
+            try:
+                self.pe.get_offset_from_rva(va-self.pe.OPTIONAL_HEADER.ImageBase)
+                return True
+            except:
+                return False
         elif self.format == "ELF":
             for x in self.elf.secnames:
                 if self.elf.secnames[x].sh_addr > 0 and va >= self.elf.secnames[x].sh_addr \
@@ -946,15 +952,24 @@ class CPyew:
             return None
 
     def getDisassembleObject(self, obj, idx=-1):
+        #print obj, type(obj), repr("".join(obj[2]).split(" "))
+        #raw_input("?")
         if type(obj) is tuple:
             ret = CDisObj()
             ret.offset = obj[0]
             ret.size = obj[1]
             ret.mnemonic = str("".join(obj[2]))
-            ret.mnemonic = str(ret.mnemonic.split(" ")[0])
+            
+            mnems = ret.mnemonic.split(" ")
+            ret.mnemonic = str(mnems[0])
+            if mnems[0].startswith("REP") or mnems[0] == "LOCK":
+              mnem_size = 2
+              ret.mnemonic += " " + mnems[1]
+            else:
+              mnem_size = 1
             
             data = obj[2].split(" ")
-            if len(data) > 1:
+            if len(data) > mnem_size:
                 operands = ""
                 for x in data[1:]:
                     operands += x + " "
@@ -1046,9 +1061,15 @@ class CPyew:
                             ops = str(i.operands).replace("[", "").replace("]", "")
                         else:
                             ops = str(i.operands)
-                        
+
+                        hex_pos = ops.find("[0x")
+                        if ops > -1:
+                          ops = ops[hex_pos+3:]
+                        hex_pos = ops.find("]")
+                        if ops > -1:
+                          ops = ops[:hex_pos]
                         ops = int(ops, 16)
-                        
+
                         if self.names.has_key(ops):
                             func = self.names[ops]
                         

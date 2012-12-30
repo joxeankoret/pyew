@@ -85,7 +85,7 @@ def showHelp(pyew):
         print pyew.debugHelp()
 
     print
-    print "Cryptographic functions: md5, sha1, sha224, sha256, sha384, sha512"
+    print "Cryptographic functions: md5, sha1, sha256"
     print
     print "Examples:"
     print "[0x0]> md5"
@@ -193,7 +193,7 @@ def setupAutoCompletion(pyew):
     for plugin in pyew.plugins:
         commands[plugin.ljust(8)] = 0
     # Crypto
-    cryptos = ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"]
+    cryptos = ["md5", "sha1", "sha256", "sha512"]
     for crypto in cryptos:
         commands[crypto] = 0
 
@@ -445,7 +445,7 @@ def main(filename):
                     pyew.plugins[plg[0]](pyew)
                 else:
                     pyew.plugins[plg[0]](pyew, args=plg[1:])
-            elif cmd.lower().split(" ")[0] in ["md5", "sha1", "sha224", "sha256", "sha384", "sha512"]:
+            elif cmd.lower().split(" ")[0] in ["md5", "sha1", "sha256", "sha512"]:
                 func = eval(cmd)
                 print "%s: %s" % (cmd, func(pyew.getBuffer()).hexdigest())
             elif cmd.startswith("!"):

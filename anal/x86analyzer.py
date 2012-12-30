@@ -106,10 +106,21 @@ class CX86CodeAnalyzer:
         if addr.find("[") > -1 and not ignore_brace:
             addr = addr.strip(" ")
             addr = addr.strip("[").strip("]")
+            pos = addr.find("[0x")
+            if pos > -1:
+                addr = addr[pos+3:]
+            pos = addr.find("]")
+            if pos > -1:
+                addr = addr[:pos]
             if addr.find("+") > -1 or addr.find("-") > -1:
                 # horrible!!!!
                 return self.resolveAddress(addr, True)
-            
+
+            try:
+                addr = int(addr, 16)
+            except:
+                pass
+
             name = self.pyew.resolveName(addr)
             if name in self._imports:
                 return addr, True, False
@@ -611,22 +622,25 @@ class CX86CodeAnalyzer:
 
         hash = {}
         hash["nodes"] = {}
-        hash["nodes"]["max"] = max(nodes)
-        hash["nodes"]["min"] = min(nodes)
-        hash["nodes"]["avg"] = sum(nodes)/len(nodes)*1.00
-        hash["nodes"]["total"] = sum(nodes)
-        hash["edges"] = {}
-        hash["edges"]["max"] = max(edges)
-        hash["edges"]["min"] = min(edges)
-        hash["edges"]["avg"] = sum(edges)/len(edges)*1.00
-        hash["edges"]["total"] = sum(edges)
+        if len(nodes) > 0:
+          hash["nodes"]["max"] = max(nodes)
+          hash["nodes"]["min"] = min(nodes)
+          hash["nodes"]["avg"] = sum(nodes)/len(nodes)*1.00
+          hash["nodes"]["total"] = sum(nodes)
+          hash["edges"] = {}
+          hash["edges"]["max"] = max(edges)
+          hash["edges"]["min"] = min(edges)
+          hash["edges"]["avg"] = sum(edges)/len(edges)*1.00
+          hash["edges"]["total"] = sum(edges)
+
         hash["ccs"] = {}
-        hash["ccs"]["max"] = max(ccs)
-        hash["ccs"]["min"] = min(ccs)
-        hash["ccs"]["avg"] = sum(ccs)/len(ccs)*1.00
-        hash["ccs"]["total"] = sum(ccs)
+        if len(ccs) > 0:
+          hash["ccs"]["max"] = max(ccs)
+          hash["ccs"]["min"] = min(ccs)
+          hash["ccs"]["avg"] = sum(ccs)/len(ccs)*1.00
+          hash["ccs"]["total"] = sum(ccs)
         
-        if self.pyew.debug:
+        if self.pyew.debug and len(ccs) > 0:
             print 
             print "Ciclomatic Complexity -> Max %d Min %d Media %2.2f" % (max(ccs), min(ccs), sum(ccs)/len(ccs)*1.00)
             print "Total functions %d Total basic blocks %d" % (len(self.functions), len(nodes))

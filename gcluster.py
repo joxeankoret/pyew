@@ -50,38 +50,7 @@ class CAdjacencyList(object):
         self.adjacency_lists = {}
 
     def createAdjacencyList(self, pyew):
-        al = []
-        ep = pyew.ep
-        try:
-            l = pyew.exports.keys()
-            l.append(pyew.ep)
-        except:
-            print "Error:", sys.exc_info()[1]
-            l = [pyew.ep]
-        functions = []
-        
-        for ep in l:
-            if pyew.functions.has_key(ep):
-                fep = pyew.functions[ep]
-                for c in fep.connections:
-                    if c in pyew.functions:
-                        if c not in functions:
-                            functions.append(c)
-                        
-                        al.append((pyew.function_stats[ep], pyew.function_stats[c]))
-        
-        dones = []
-        while len(functions) > 0:
-            addr = functions.pop()
-            f = pyew.functions[addr]
-            for c in f.connections:
-                if c in pyew.functions and c not in dones:
-                    functions.append(c)
-                    dones.append(c)
-                    
-                    al.append((pyew.function_stats[addr], pyew.function_stats[c]))
-        
-        return al
+        return pyew.function_stats.values()
 
     def getSimilarity(self, s1, s2):
         m = max(len(s1), len(s2))
@@ -109,8 +78,11 @@ class CAdjacencyList(object):
         else:
             s1 = set(al1)
             s2 = set(al2)
+            print s1, s2
             diff = len(s1.difference(s2)) + len(s2.difference(s1))
+            print diff
             total = max(len(s1), len(s2))
+            print total, len(s1), len(s2)
             simil = diff * 100. / total
             
             return simil
@@ -241,7 +213,7 @@ class CExpertCluster(object):
 class CGraphCluster(object):
     def __init__(self):
         self.clear()
-        self.deep = False
+        self.deep = True
         self.timeout = 0
 
     def addFile(self, filename):

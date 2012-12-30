@@ -34,7 +34,7 @@ import StringIO
 from gzip import GzipFile
 
 from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT, \
-                   ANALYSIS_FUNCTIONS_AT_END, PURE_PYTHON_DISASM
+                   ANALYSIS_FUNCTIONS_AT_END, PURE_PYTHON_DISASM, DISTORM_VERSION
 from safer_pickle import SafeUnpickler
 
 try:
@@ -57,27 +57,36 @@ except ImportError:
 
 from binascii import unhexlify
 
+has_pydistorm = has_distorm = False
+
 # we may want to switch to the pure python disasssembler, for some reason...
 if not PURE_PYTHON_DISASM:
-  try:
-      from pydistorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-      has_pydistorm = True
-  except ImportError:
-      has_pydistorm = False
-  
-  if not has_pydistorm:
-      try:
-          from distorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-          has_distorm = True
-      except ImportError:
-          has_distorm = False
-  else:
+
+  if DISTORM_VERSION == 3:
+    try:
+      from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+      has_distorm = True
+    except:
       has_distorm = False
+  else:
+    try:
+        from pydistorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+        has_pydistorm = True
+    except ImportError:
+        has_pydistorm = False
+  
+    if not has_pydistorm and not has_distorm:
+        try:
+            from distorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
+            has_distorm = True
+        except ImportError:
+            has_distorm = False
+
 else:
     has_distorm = False
     has_pydistorm = False
 
-if not has_distorm and not has_pydistorm:
+if not has_distorm and not has_pydistorm or PURE_PYTHON_DISASM:
     try:
         from pyms_iface import Decode, Decode16Bits, Decode32Bits, Decode64Bits
         has_pyms = True
@@ -718,12 +727,14 @@ class CPyew:
             self.log()
             x = self.pe.OPTIONAL_HEADER.AddressOfEntryPoint
             
+            s = None
             for s in self.pe.sections:
                 if x >= s.VirtualAddress and x <= s.VirtualAddress + s.SizeOfRawData:
                     break
-            
-            x = x - s.VirtualAddress
-            x += s.PointerToRawData
+
+            if s is not None:
+              x = x - s.VirtualAddress
+              x += s.PointerToRawData
 
             self.log("Entry Point at 0x%x" % x)
             try:

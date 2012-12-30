@@ -15,3 +15,5 @@ ANALYSIS_FUNCTIONS_AT_END=True
 
 # Experimental: use the pure python x86 disassembler pymsasid?
 PURE_PYTHON_DISASM=False
+DISTORM_VERSION=3
+

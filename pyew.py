@@ -48,7 +48,7 @@ from pyew_core import CPyew
 
 PROGRAM="PYEW! A Python tool like radare or *iew"
 VERSION=0x01020000
-HUMAN_VERSION="1.3.0.0"
+HUMAN_VERSION="2.2.0.0"
 
 def showHelp(pyew):
     print PROGRAM, "0x%x" % VERSION, "(%s)" % HUMAN_VERSION

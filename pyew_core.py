@@ -32,6 +32,7 @@ import operator
 import StringIO
 
 from gzip import GzipFile
+from datetime import datetime
 
 from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT, \
                    ANALYSIS_FUNCTIONS_AT_END, PURE_PYTHON_DISASM, DISTORM_VERSION
@@ -298,7 +299,6 @@ class CPyew:
                     rel = offset - self.elf.secnames[x].sh_offset
                     ret = self.elf.secnames[x].sh_addr + rel
                     break
-        
         return ret
 
     def isVirtualAddress(self, va):
@@ -330,7 +330,6 @@ class CPyew:
                 if va >= self.elf.secnames[x].sh_addr and va < self.elf.secnames[x].sh_addr + self.elf.secnames[x].sh_size:
                     tmp = va - self.elf.secnames[x].sh_addr
                     ret = self.elf.secnames[x].sh_offset + tmp
-        
         return ret
 
     def executableMemory(self, va):
@@ -348,12 +347,11 @@ class CPyew:
                 if va >= self.elf.secnames[x].sh_addr and va < self.elf.secnames[x].sh_addr + self.elf.secnames[x].sh_size:
                     SHF_EXECINSTR = 0x4
                     ret = self.elf.secnames[x].sh_flags & SHF_EXECINSTR != 0
-        
         return ret
 
     def showSettings(self):
         for x in dir(self):
-            if x.startswith("_") or x in ["pe", "elf", "boot", "buf"] or operator.isCallable(eval("self." + x)) \
+            if x.startswith("_") or x.upper() in ["PE", "ELF", "BOOT", "BIOS", "BUF"] or operator.isCallable(eval("self." + x)) \
                or x in ["plugins", "names", "imports", "exports", "functions_address", \
                         "names", "functions", "xrefs_from", "xrefs_to", "antidebug", \
                         "function_stats", "basic_blocks", "flowgraphs", "callgraph"]:
@@ -417,12 +415,40 @@ class CPyew:
         return new_pyew
 
     def loadBootSector(self):
-        self.format = "bootsector"
+        self.format = "BOOT"
+        self.processor = "intel"
         self.deepcodeanalysis = True
         self.ep = 0
         self.type = 16  
         self.log("x86 Boot Sector")
         self.findFunctions("intel")
+
+    def loadBiosFile(self):
+        self.format = "BIOS"
+        self.processor = "intel"
+        self.deepcodeanalysis = False
+        self.ep = 0
+        self.type = 16
+        self.log("BIOS file")
+        self.printBiosInformation()
+        if self.codeanalysis:
+            self.findFunctions("intel")
+
+    def printBiosInformation(self):
+        bios_date = datetime.strptime(self.getBytes(0xfff5, 8), "%m/%d/%y")
+        bios_id = self.getBytes(0xf478, 40)
+        bios_name = self.getBytes(0xF400, 16)
+        bios_banner = self.getBytes(0xF500, 64)
+        self.log("%s %s %s" % (bios_name, bios_id, bios_date))
+        self.log(bios_banner)
+        self.log("")
+
+    def seemsBios(self):
+        try:
+            datetime.strptime(self.getBytes(0xfff5, 8), "%m/%d/%y")
+            return True
+        except:
+            return False
 
     def fileTypeLoad(self):
         try:
@@ -438,6 +464,8 @@ class CPyew:
                 self.loadOle2()
             elif self.getBytes(0x1fe, 2) == "\x55\xAA": # bootsector:
                 self.loadBootSector()
+            elif self.seemsBios():
+                self.loadBiosFile()
         except:
             print "Error loading file:", sys.exc_info()[1]
             if self.debug or self.batch:
@@ -1072,7 +1100,7 @@ class CPyew:
 
                         if self.names.has_key(ops):
                             func = self.names[ops]
-                        
+
                         if self.maxsize >= ops and ops > 0:
                             index += 1
                             comment = "\t; %d %s" % (index, func)
@@ -1154,7 +1182,7 @@ class CPyew:
                 else:
                     ret += "0x%08x (%02x) %-22s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic).lower() + " " + str(ops).lower(), comment)
                 if str(i.mnemonic).lower().startswith("j") or \
-                   str(i.mnemonic).lower() == "ret" or \
+                   str(i.mnemonic).lower().startswith("ret") or \
                    str(i.mnemonic).lower().find("loop") > -1:
                     pos += 1
                     ret += "\n0x%08x " % i.offset + "-"*70

@@ -276,6 +276,9 @@ class CX86CodeAnalyzer:
                 bb.offset = l.offset
             
             mnem = str(l.mnemonic).upper()
+            if mnem.find(" ") > -1:
+                mnem = mnem.split(" ")[-1]
+
             # Set the current offset as already analyzed
             self.analyzed.add(l.offset)
             
@@ -290,7 +293,11 @@ class CX86CodeAnalyzer:
             
             if self.basic_blocks.has_key(l.offset):
                 break_bb = 2
-            elif mnem.find("CALL") > -1: # JMP?
+            elif mnem.find("CALL") > -1: # JMP?:
+                if l.operands.startswith("FAR"):
+                  pos = l.operands.find(":")
+                  if pos > -1:
+                    l.operands = l.operands[pos+1:]
                 #
                 # Resolve the address of the call/jmp and check
                 # if it's an import and if it breaks the current
@@ -308,23 +315,13 @@ class CX86CodeAnalyzer:
                 #bb.addConnection(l.offset, conn)
                 f.addOutConnection(conn)
                 
-                if isbreak and mnem == "JMP":
-                    # We can't resolve the address, break the basic block
-                    break_bb = 2
-                elif not isimport:
-                    if mnem.find("CALL") > -1 and val is not None and val < self.pyew.maxsize:
+                if not isimport:
+                    if val is not None and val < self.pyew.maxsize:
                         #if val !=
                         if val not in self.queue and val not in self.analyzed and \
                            val != l.offset + l.size:
                             #print "Adding to queue %08x" % val
                             self.queue.add(val)
-                    elif mnem == "JMP":
-                        # Follow the jump if resolvable
-                        #if type(val) is int:
-                        if str(val).isdigit():
-                            lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
-                        else:
-                            break_bb = 2
             
             elif mnem.startswith("J") or mnem.startswith("LOOP"):
                 # Break the basic block without clearing 'lines' as we will set

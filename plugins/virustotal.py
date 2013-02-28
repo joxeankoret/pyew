@@ -55,7 +55,7 @@ class CVirusTotalScanner:
             else:
                 return
         else:
-            matches = re.findall("""<td>\n            (.*)\n          </td>\n          <td class=\"text-red\"\>\n            (.*)""",
+            matches = re.findall("""<td class=\"ltr\">\n            (.*)\n          </td>\n          <td class=\"ltr text-red\"\>\n            (.*)""",
                                  data, re.MULTILINE or re.IGNORECASE)
             self.matches = {}
             

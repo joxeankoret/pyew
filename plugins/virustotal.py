@@ -24,13 +24,13 @@ import re
 import os
 import sys
 import hashlib
-import urllib
+import urllib2
 
 class CVirusTotalScanner:
     
     printResults = False
     filename = None
-    baseUrl = "http://www.virustotal.com/vt/en/consultamd5"
+    baseUrl = "http://www.virustotal.com/en/file/%s/analysis/"
     matches = {}
     md5 = None
 
@@ -41,14 +41,14 @@ class CVirusTotalScanner:
         else:
             strmd5 = md5.md5(file(filename, "rb").read()).hexdigest()
         
-        params = urllib.urlencode({"hash":strmd5})
-        headers = {"Content-type": "application/x-www-form-urlencoded", "accept":"Text/Plain"}
-        data = urllib.urlopen(self.baseUrl, params).read()
+        opener = urllib2.build_opener()
+        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+        data = opener.open(self.baseUrl % strmd5).read()
         
         self.filename = filename
         self.md5 = strmd5
         matches = {}
-        
+
         if data.find("<b>Error:</b>") > -1:
             if self.printResults:
                 print "***No match"

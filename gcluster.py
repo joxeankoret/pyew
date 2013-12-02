@@ -212,7 +212,7 @@ class CExpertCluster(object):
 class CGraphCluster(object):
     def __init__(self):
         self.clear()
-        self.deep = True
+        self.deep = False
         self.timeout = 0
 
     def addFile(self, filename):

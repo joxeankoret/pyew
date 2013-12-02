@@ -78,6 +78,7 @@ def showHelp(pyew):
     print "edit                              Reopen the file for reading and writing"
     print "wx data                           Write hexadecimal data to file"
     print "wa data                           Write ASCII data to file"
+    print "ws data                           Write ASCII data with closing 0x00 character to file"
     print "file                              Load as new file the buffer from the current offset"
     print "ret                               Return to the original file (use after 'file')"
     print "interact                          Open an interactive Python console"    
@@ -478,12 +479,15 @@ def main(filename):
                     print "Scripts available:"
                     for script in scripts:
                         print "\t", script
-            elif cmd.split(" ")[0] in ["wx", "wa"]:
-                if cmd.split(" ")[0] == "wx":
+            elif cmd.split(" ")[0] in ["wx", "wa", "ws"]:
+                cmd_arg = cmd.split(" ")[0]
+                if cmd_arg == "wx":
                     data = unhexlify(cmd[3:])
-                else:
+                elif cmd_arg == "wa":
                     data = cmd[3:]
-                
+                else:
+                    data = cmd[3:] + "\x00"
+
                 pyew.f.seek(pyew.offset)
                 pyew.f.write(data)
                 pyew.seek(pyew.offset)

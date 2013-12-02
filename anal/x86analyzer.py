@@ -282,7 +282,7 @@ class CX86CodeAnalyzer:
             # Set the current offset as already analyzed
             self.analyzed.add(l.offset)
             
-            # Check for typical antidebuggin/antiemulation techniques before
+            # Check for typical antidebugging/antiemulation techniques before
             # doing anything else
             if mnem.startswith("INT") or mnem.startswith("UD") or \
                mnem.startswith("RDTSC") or mnem.find("IDT") > -1 or \

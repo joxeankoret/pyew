@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-Pyew! A Python Tool like the populars radare and *iew
+Pyew! A Python Tool for malware analysis
 
-Copyright (C) 2009, 2010, 2011, 2012 Joxean Koret
+Copyright (C) 2009-2013 Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

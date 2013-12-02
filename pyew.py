@@ -2,9 +2,9 @@
 # -*- coding: latin-1 -*-
 
 """
-Pyew! A Python Tool like the populars *iew
+Pyew! A Python Tool for malware analysis
 
-Copyright (C) 2009, Joxean Koret
+Copyright (C) 2009-2013 Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -46,9 +46,9 @@ except:
 
 from pyew_core import CPyew
 
-PROGRAM="PYEW! A Python tool like radare or *iew"
-VERSION=0x01020000
-HUMAN_VERSION="2.2.0.0"
+PROGRAM="PYEW! A Python tool for malware analysis"
+VERSION=0x02030000
+HUMAN_VERSION="2.3.0.0"
 
 def showHelp(pyew):
     print PROGRAM, "0x%x" % VERSION, "(%s)" % HUMAN_VERSION
@@ -205,7 +205,6 @@ def setupAutoCompletion(pyew):
         readline.parse_and_bind("tab: complete")
     except:
         pass
-
 
 def main(filename):
     pyew = CPyew()

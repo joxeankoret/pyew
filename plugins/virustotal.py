@@ -30,7 +30,7 @@ class CVirusTotalScanner:
     
     printResults = False
     filename = None
-    baseUrl = "http://www.virustotal.com/en/file/%s/analysis/"
+    baseUrl = "http://www.virustotal.com/search?query=%s"
     matches = {}
     md5 = None
 

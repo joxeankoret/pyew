@@ -99,7 +99,7 @@ class CX86CodeAnalyzer:
         self.antidebug = set()
         
         self.last_msg_size = 0
-        self.start_time = 0
+        self.start_time = None
 
     def resolveAddress(self, addr, ignore_brace=False):
         addr = str(addr)
@@ -411,24 +411,24 @@ class CX86CodeAnalyzer:
             self.queue = set([addr])
         else:
             self.queue.add(addr)
-        
+
         while addr is not None and len(self.queue) > 0:
             if self.timeout != 0 and time.time() > self.start_time + self.timeout:
                 raise Exception("Code analysis for x86 timed-out")
             
             addr = self.queue.pop()
             if addr not in self.analyzed:
-                #print "Creating function 0x%08x" % addr
                 self.createFunction(addr)
                 self.calculateFunctionStats(addr)
                 
                 if not self.pyew.batch:
                     msg = "\b"*self.last_msg_size + "Analyzing address 0x%08x" % addr + " - %d in queue / %d total" % (len(self.queue), len(self.functions))
-                    #print "\b"*self.last_msg_size + " "*self.last_msg_size + "\b"*self.last_msg_size
+                    if len(msg) < 80:
+                      size = 80 - len(msg)
+                      msg += " "*size + "\b"*size
                     self.last_msg_size = len(msg)
                     sys.stdout.write(msg)
                     sys.stdout.flush()
-                #print self.queue
         
         for f in self.functions:
             if self.timeout != 0 and time.time() > self.start_time + self.timeout:
@@ -570,7 +570,9 @@ class CX86CodeAnalyzer:
         return fg
 
     def doCodeAnalysis(self, ep=True, addr=None):
-        self.start_time = time.time()
+        if self.start_time == None:
+            self.start_time = time.time()
+
         if ep:
             self.analyzeEntryPoint()
         else:
@@ -583,6 +585,9 @@ class CX86CodeAnalyzer:
         
         try:
             for exp in self.pyew.pe.DIRECTORY_ENTRY_EXPORT.symbols:
+                if addr in self.pyew.names:
+                    continue
+
                 try:
                     addr = self.pyew.pe.get_offset_from_rva(exp.address)
                 except:

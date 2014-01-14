@@ -231,6 +231,7 @@ class CPyew:
         self.antidebug = []
         self.function_stats = {}
         self.basic_blocks = {}
+        self.analysing = False
         self.analysis_timeout = CONFIG_ANALYSIS_TIMEOUT
         self.warnings = []
         
@@ -417,22 +418,31 @@ class CPyew:
     def loadBootSector(self):
         self.format = "BOOT"
         self.processor = "intel"
+        old_deep_value = self.deepcodeanalysis
         self.deepcodeanalysis = True
         self.ep = 0
         self.type = 16  
-        self.log("x86 Boot Sector")
-        self.findFunctions("intel")
+        try:
+            self.log("x86 Boot Sector")
+            self.findFunctions("intel")
+        finally:
+            self.deepcodeanalysis = old_deep_value
 
     def loadBiosFile(self):
         self.format = "BIOS"
         self.processor = "intel"
+        
+        old_deep_value = self.deepcodeanalysis
         self.deepcodeanalysis = False
         self.ep = 0
         self.type = 16
-        self.log("BIOS file")
-        self.printBiosInformation()
-        if self.codeanalysis:
-            self.findFunctions("intel")
+        try:
+            self.log("BIOS file")
+            self.printBiosInformation()
+            if self.codeanalysis:
+                self.findFunctions("intel")
+        finally:
+            self.deepcodeanalysis = old_deep_value
 
     def printBiosInformation(self):
         bios_date = datetime.strptime(self.getBytes(0xfff5, 8), "%m/%d/%y")
@@ -498,20 +508,25 @@ class CPyew:
     def getAnalysisObject(self):
         if self._anal is not None:
             return self._anal
-        
-        anal=CX86CodeAnalyzer(self)
-        anal.timeout = self.analysis_timeout
-        anal.antidebug = self.antidebug
-        anal.names.update(self.functions)
-        anal.names.update(self.names)
-        anal.functions = self.functions
-        anal.functions_address = self.functions_address
-        anal.xrefs_to = self.xrefs_to
-        anal.xrefs_from = self.xrefs_from
-        anal.basic_blocks = self.basic_blocks
-        anal.function_stats = self.function_stats
-        self._anal = anal
-        
+
+        try:
+            self.analysing = True
+
+            anal=CX86CodeAnalyzer(self)
+            anal.timeout = self.analysis_timeout
+            anal.antidebug = self.antidebug
+            anal.names.update(self.functions)
+            anal.names.update(self.names)
+            anal.functions = self.functions
+            anal.functions_address = self.functions_address
+            anal.xrefs_to = self.xrefs_to
+            anal.xrefs_from = self.xrefs_from
+            anal.basic_blocks = self.basic_blocks
+            anal.function_stats = self.function_stats
+            self._anal = anal
+        finally:
+            self.analysing = False
+
         return anal
 
     def resolveName(self, ops):
@@ -571,8 +586,11 @@ class CPyew:
         anal = self.getAnalysisObject()
         dones = []
         while 1:
+            f = None
+            self.checkAnalysisTimeout()
             funcs = list(self.functions)
             for f in funcs:
+                self.checkAnalysisTimeout()
                 f_end = self.getFunctionEnd(f)
                 buf1 = self.getBytes(f_end, 16)
                 # strip the typical padding characters
@@ -584,44 +602,46 @@ class CPyew:
                 if buf1 != buf2 and not buf2.startswith("\x00"):
                     off = f_end + len(buf1)-len(buf2)
                     if off not in self.functions and off not in dones:
-                        anal.doCodeAnalysis(ep = False, addr = f_end + len(buf1)-len(buf2))
+                        f = off
+                        anal.queue.add(f)
                     dones.append(off)
-            
+
+            if f is not None:
+                anal.doCodeAnalysis(ep = False, addr = f)
+
             total = len(self.functions)
             if total == len(funcs):
                 break
+
+    def checkAnalysisTimeout(self):
+        anal = self._anal
+        if anal.timeout != 0 and time.time() > anal.start_time + anal.timeout:
+            raise Exception("Code analysis for x86 timed-out")
 
     def createIntelFunctionsByPrologs(self):
         anal = self.getAnalysisObject()
         
         if self.type == 32:
-            prologs = ["8bff558b", "5589e5"]
+            prologs = ["8bff558b", "5589e5", "558bec"]
         else:
             prologs = ["40554883ec", "554889e5"]
         hints = []
         for prolog in prologs:
             hints += self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
-        self.log("\b"*80 + "Found %d possible function(s) using method #1" % len(hints) + " "*20 + "\b"*80)
-        for hint in hints:
-            if anal.timeout != 0 and time.time() > anal.start_time + anal.timeout:
-                raise Exception("Code analysis for x86 timed-out")
-            anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
+        self.log("\b"*80 + "Found %d possible function(s)" % len(hints) + " "*20 + "\b"*80)
         
-        prologs = ["558bec"]
-        for prolog in prologs:
-            hints += self.dosearch(self.f, "x", prolog, cols=60, doprint=False, offset=0)
-        self.log("\b"*80 + "Found %d possible function(s) using method #2" % len(hints) + " "*20)
-        for hint in hints:
-            if anal.timeout != 0 and time.time() > anal.start_time + anal.timeout:
-                raise Exception("Code analysis for x86 timed-out")
-            anal.doCodeAnalysis(ep = False, addr = int(hint.keys()[0]))
+        f = None
+        if len(hints) > 0:
+            for hint in hints:
+                f = int(hint.keys()[0])
+                anal.queue.add(f)
+            anal.doCodeAnalysis(ep = False, addr = f)
         self.log("\n")
 
     def findIntelFunctions(self):
         anal = self.getAnalysisObject()
         anal.timeout = self.analysis_timeout
         anal.doCodeAnalysis()
-        
         if self.deepcodeanalysis:
             self.log("\b"*80 + "Searching typical function's prologs..." + " "*20)
             self.createIntelFunctionsByPrologs()
@@ -727,7 +747,7 @@ class CPyew:
         if self.codeanalysis:
             if self.processor == "intel":
                 self.findFunctions(self.processor)
-                if not imps or len(self.functions) <= 1 and self.deepcodeanalysis:
+                if (not imps or len(self.functions) <= 1) and self.deepcodeanalysis:
                     self.createIntelFunctionsByPrologs()
         self.seek(0)
 
@@ -1041,6 +1061,8 @@ class CPyew:
               offset = self.ep
 
             for i in Decode(offset, buf, decode):
+                if self.analysing:
+                    self.checkAnalysisTimeout()
                 i = self.getDisassembleObject(i, ilines)
                 ret.append(i)
                 ilines += 1

@@ -30,6 +30,11 @@ from graphs import CNode, CGraph
 try:
     import code, traceback, signal
     signal_handler = True
+    # The signal module is available on Windows but there is no SIGUSR1
+    # there so disable it for platforms where SIGUSR1 does not exists.
+    # NOTE: I'm not checking the os.platform because I don't know if it
+    # may happen tomorrow in other platforms (mobiles?)
+    signal_handler = 'SIGUSR1' in dir(signal)
 except:
     signal_handler = False
 

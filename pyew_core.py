@@ -1271,7 +1271,7 @@ class CPyew:
     def dosearch(self, f, mtype, search, cols=32, doprint=True, offset=0):
         if (search == None or search == "") and mtype not in ["s", "o"]:
             return []
-        
+
         oldpos = f.tell()
         f.seek(0, 2)
         bigfile = False
@@ -1310,18 +1310,21 @@ class CPyew:
                 
                 while 1:
                     self.calls = []
+                    cmd_type = mtype[0]
                     while 1:
-                        if mtype == "s":
+                        if cmd_type == "s":
                             pos = buf.find(search)
-                        elif mtype == "i":
+                        elif cmd_type == "i":
                             pos = buf.lower().find(search.lower())
-                        elif mtype == "x":
+                        elif cmd_type == "x":
+                            search = search.strip(" ")
                             pos = buf.find(unhexlify(search))
-                        elif mtype == "X":
+                        elif cmd_type == "X":
+                            search = search.strip(" ")
                             pos = buf.lower().find(unhexlify(search).lower())
-                        elif mtype == "u":
+                        elif cmd_type == "u":
                             pos = buf.find(to_unicode(search))
-                        elif mtype == "U":
+                        elif cmd_type == "U":
                             pos = buf.lower().find(to_unicode(search.lower()))
                         else:
                             self.log("Unknown search type!")
@@ -1329,11 +1332,24 @@ class CPyew:
                         
                         if pos > -1:
                             if doprint:
-                                s = buf[pos:pos+cols]
-                                s = s.translate(FILTER)
+                                hexa = False
+                                if len(mtype) > 1:
+                                    # Hexadecimal output?
+                                    hexa = mtype[1] == "h"
+                                
+                                # For non hexadecimal representations,
+                                # print an ASCII like representation.
+                                if not hexa:
+                                    s = buf[pos:pos+cols]
+                                    s = s.translate(FILTER)
+                                else:
+                                    s = buf[pos:pos+cols]
+                                    s = ''.join(["%02X"%ord(x) for x in buf[pos:pos+cols]])
+
                                 tmp = moffset+pos+offset
                                 self.calls.append(tmp)
                                 self.log("HINT[0x%08x]: %s" % (tmp, s))
+
                             hints.append({moffset+pos+offset:buf[pos:pos+cols]})
                             moffset += pos + len(search)
                             buf = buf[pos+len(search):]

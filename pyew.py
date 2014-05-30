@@ -395,7 +395,8 @@ def main(filename):
             elif cmd.lower() in ["settings", "options"]:
                 pyew.showSettings()
             elif cmd.startswith("/"):
-                ret = pyew.dosearch(pyew.f, cmd[1:2], cmd[3:], cols=60, offset=pyew.offset)
+                search_type = cmd.split(" ")
+                ret = pyew.dosearch(pyew.f, search_type[0].strip("/"), cmd[len(search_type)+1:], cols=60, offset=pyew.offset)
             elif cmd.lower() in ["?", "help"]:
                 showHelp(pyew)
             elif cmd.lower() in ["imports"]:

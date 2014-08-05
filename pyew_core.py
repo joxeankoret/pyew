@@ -1113,10 +1113,11 @@ class CPyew:
                             ops = str(i.operands)
 
                         hex_pos = ops.find("[0x")
-                        if ops > -1:
+                        if hex_pos > -1:
                           ops = ops[hex_pos+3:]
                         hex_pos = ops.find("]")
-                        if ops > -1:
+
+                        if hex_pos > -1:
                           ops = ops[:hex_pos]
                         ops = int(ops, 16)
 

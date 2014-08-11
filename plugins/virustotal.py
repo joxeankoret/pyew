@@ -44,7 +44,6 @@ class CVirusTotalScanner:
         opener = urllib2.build_opener()
         opener.addheaders = [('User-agent', 'Mozilla/5.0')]
         data = opener.open(self.baseUrl % strmd5).read()
-        print self.baseUrl % strmd5
         
         self.filename = filename
         self.md5 = strmd5

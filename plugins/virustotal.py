@@ -44,6 +44,7 @@ class CVirusTotalScanner:
         opener = urllib2.build_opener()
         opener.addheaders = [('User-agent', 'Mozilla/5.0')]
         data = opener.open(self.baseUrl % strmd5).read()
+        print self.baseUrl % strmd5
         
         self.filename = filename
         self.md5 = strmd5
@@ -55,8 +56,7 @@ class CVirusTotalScanner:
             else:
                 return
         else:
-            matches = re.findall("""<td class=\"ltr\">\n            (.*)\n          </td>\n          <td class=\"ltr text-red\"\>\n            (.*)""",
-                                 data, re.MULTILINE or re.IGNORECASE)
+            matches = re.findall("""<td class=\"ltr\">\n\W+(.*)\W+\</td>\W+\<td class=\"ltr text-red\"\>\W+(.*)""", data, re.MULTILINE or re.IGNORECASE)
             self.matches = {}
             
             for match in matches:

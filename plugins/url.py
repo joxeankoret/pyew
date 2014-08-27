@@ -59,8 +59,9 @@ def urlExtract(pyew, doprint=True):
 
     if doprint and len(uniret) > 0:
         i = 0
-        for url in ret:
+        for url in uniret:
             if url not in ret:
+                ret.append(url)
                 if i == 0:
                     print "UNICODE URLs"
                     print

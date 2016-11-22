@@ -146,6 +146,7 @@ def showDotInXDot(buf):
             pass
     except ImportError:
         print "Python-GTK is not installed"
+        raise
 
 def showCallGraph(pyew, doprint=True, addr=None, args=None):
     """ Show the callgraph of the whole program or the specified function """

@@ -204,7 +204,7 @@ class CX86CodeAnalyzer:
         #
         self.names[addr] = "sub_%08x" % addr
         f = CX86Function(addr)
-        lines = self.pyew.disasm(abs(addr), self.pyew.processor, self.pyew.type, 100, 1500)
+        lines = list(self.pyew.disasm(abs(addr), self.pyew.processor, self.pyew.mode, 200, 2048))
         bb = CX86BasicBlock()
         bb.offset = addr
         flow = deque() # set()
@@ -269,7 +269,7 @@ class CX86CodeAnalyzer:
                 # Create a new basic block
                 bb = CX86BasicBlock()
                 # And fill the assembly lines
-                lines = self.pyew.disasm(naddr, self.pyew.processor, self.pyew.type, 100, 1500)
+                lines = self.pyew.disasm(naddr, self.pyew.processor, self.pyew.mode, 100, 512)
                 l = lines[0]
                 #print "%08x" % lines[0].offset, lines[0].mnemonic, lines[0].operands
             
@@ -339,7 +339,7 @@ class CX86CodeAnalyzer:
                 bb.addConnection(l.offset, val)
                 
                 if mnem != "JMP" and val < self.pyew.maxsize and val is not None:
-                    lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
+                    lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.mode, 100, 512)
                 
                 if mnem != "JMP":
                     bb.addConnection(l.offset, l.offset + l.size)
@@ -353,7 +353,7 @@ class CX86CodeAnalyzer:
                         # Follow the jump if resolvable
                         if str(val).isdigit():
                         #if type(val) is int:
-                            lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.type, 100, 1500)
+                            lines = self.pyew.disasm(val, self.pyew.processor, self.pyew.mode, 100, 512)
                         else:
                             break_bb = 2
             elif mnem.startswith("RET") or mnem.startswith("HLT") or \
@@ -416,7 +416,7 @@ class CX86CodeAnalyzer:
             self.queue = set([addr])
         else:
             self.queue.add(addr)
-
+        
         while addr is not None and len(self.queue) > 0:
             if self.timeout != 0 and time.time() > self.start_time + self.timeout:
                 raise Exception("Code analysis for x86 timed-out")
@@ -540,7 +540,7 @@ class CX86CodeAnalyzer:
             bb_end = end_offset + bb.instructions[-1].size
             
             buf = self.pyew.getBytes(bb_start, bb_end-bb_start)
-            instructions = self.pyew.disassemble(buf=buf, baseoffset=bb_start, marker=False)
+            instructions = self.pyew.disassemble(buf=buf, baseoffset=bb_start, marker=False, mode=self.pyew.mode)
             instructions = instructions.split("\n")
             if instructions[-1] == "":
                 del instructions[len(instructions)-1]

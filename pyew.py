@@ -3,7 +3,6 @@
 
 """
 Pyew! A Python Tool for malware analysis
-
 Copyright (C) 2009-2013 Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
@@ -75,6 +74,8 @@ def showHelp(pyew):
     print "/r expr                           Search regular expression"
     print "/u expr                           Search unicode expression"
     print "/U expr                           Search unicode expression ignoring case"
+    print "@                                 Print last search results"
+    print "@<num>                            Seek to the result number <num>"
     print "edit                              Reopen the file for reading and writing"
     print "wx data                           Write hexadecimal data to file"
     print "wa data                           Write ASCII data to file"
@@ -239,6 +240,8 @@ def main(filename):
         commands = f.readlines()
         f.close()
 
+    last_search_results = None
+
     while 1:
         try:
             last_cmd = cmd
@@ -347,8 +350,8 @@ def main(filename):
                     else:
                         off = pyew.offset
                     if not data[1].startswith("/"):
-                        mtype = int(data[1])
-                        dis = pyew.disassemble(pyew.buf, pyew.processor, mtype, pyew.lines, pyew.bsize, baseoffset=off)
+                        mode = int(data[1])
+                        dis = pyew.disassemble(pyew.buf, pyew.processor, mode, pyew.lines, pyew.bsize, baseoffset=off)
                         print dis
                     else:
                         cmd = data[1:]
@@ -358,15 +361,15 @@ def main(filename):
                             ret = pyew.dosearch(pyew.f, cmd[0][1:2], "", cols=60, doprint=False, offset=off)
                         
                         for x in ret:
-                            dis = pyew.disassemble(x.values()[0], pyew.processor, pyew.type, pyew.lines, pyew.bsize, baseoffset=x.keys()[0])
+                            dis = pyew.disassemble(x.values()[0], pyew.processor, pyew.mode, pyew.lines, pyew.bsize, baseoffset=x.keys()[0])
                             print dis
                 else:
-                    dis = pyew.disassemble(pyew.buf, pyew.processor, pyew.type, pyew.lines, pyew.bsize, baseoffset=pyew.offset)
+                    dis = pyew.disassemble(pyew.buf, pyew.processor, pyew.mode, pyew.lines, pyew.bsize, baseoffset=pyew.offset)
                     print dis
             elif cmd.isdigit() and int(cmd) < len(pyew.calls)+1 and int(cmd) > 0:
                 pyew.offset = pyew.calls[int(cmd)-1]
                 pyew.seek(pyew.offset)
-                dis = pyew.disassemble(pyew.buf, pyew.processor, pyew.type, pyew.lines, pyew.bsize, baseoffset=pyew.offset)
+                dis = pyew.disassemble(pyew.buf, pyew.processor, pyew.mode, pyew.lines, pyew.bsize, baseoffset=pyew.offset)
                 print dis
             elif cmd == "buf":
                 line = ""
@@ -395,8 +398,22 @@ def main(filename):
             elif cmd.lower() in ["settings", "options"]:
                 pyew.showSettings()
             elif cmd.startswith("/"):
-                search_type = cmd.split(" ")
-                ret = pyew.dosearch(pyew.f, search_type[0].strip("/"), cmd[len(search_type)+1:], cols=60, offset=pyew.offset)
+                ret = pyew.dosearch(pyew.f, cmd[1:2], cmd[3:], cols=60, offset=pyew.offset)
+                last_search_results = ret
+            elif cmd == "@":
+                if last_search_results is None:
+                    print "No previous search results found."
+                else:
+                    for x in last_search_results:
+                        print x.values()[0][1]
+            elif cmd.startswith("@"):
+                if last_search_results is None:
+                    print "No previous search results found."
+                else:
+                    num = int(cmd[1:])
+                    tmp_offset = last_search_results[num-1].keys()[0]
+                    print "Seeking to offset 0x%x" % tmp_offset
+                    pyew.seek(tmp_offset)
             elif cmd.lower() in ["?", "help"]:
                 showHelp(pyew)
             elif cmd.lower() in ["imports"]:

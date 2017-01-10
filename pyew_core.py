@@ -35,7 +35,7 @@ from gzip import GzipFile
 from datetime import datetime
 
 from config import CODE_ANALYSIS, DEEP_CODE_ANALYSIS, CONFIG_ANALYSIS_TIMEOUT, \
-                   ANALYSIS_FUNCTIONS_AT_END, PURE_PYTHON_DISASM, DISTORM_VERSION
+                   ANALYSIS_FUNCTIONS_AT_END
 from safer_pickle import SafeUnpickler
 
 try:
@@ -56,57 +56,28 @@ try:
 except ImportError:
     hasDebug = False
 
-from binascii import unhexlify
+from binascii import unhexlify, hexlify
 
-has_pydistorm = has_distorm = False
-
-# we may want to switch to the pure python disasssembler, for some reason...
-if not PURE_PYTHON_DISASM:
-
-  if DISTORM_VERSION == 3:
-    try:
-      from distorm3 import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-      has_distorm = True
-    except:
-      has_distorm = False
-  else:
-    try:
-        from pydistorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-        has_pydistorm = True
-    except ImportError:
-        has_pydistorm = False
-  
-    if not has_pydistorm and not has_distorm:
-        try:
-            from distorm import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-            has_distorm = True
-        except ImportError:
-            has_distorm = False
-
-else:
-    has_distorm = False
-    has_pydistorm = False
-
-if not has_distorm and not has_pydistorm or PURE_PYTHON_DISASM:
-    try:
-        from pyms_iface import Decode, Decode16Bits, Decode32Bits, Decode64Bits
-        has_pyms = True
-    except ImportError:
-        has_pyms = False
-else:
-    has_pyms = False
+try:
+  from capstone import *
+except ImportError:
+  print("Cannot import capstone, Pyew will not have disassembly support.")
+  print("Please install it manually from http://www.capstone-engine.org/")
+  raise
 
 from config import PLUGINS_PATH
 from anal.x86analyzer import CX86CodeAnalyzer
 
 FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
 
+#-----------------------------------------------------------------------
 def to_unicode(buf):
     ret = ""
     for c in buf:
         ret += c + "\x00"
     return ret
 
+#-----------------------------------------------------------------------
 class CDisObj:
     def __init__(self):
         self.offset = None
@@ -115,9 +86,67 @@ class CDisObj:
         self.instructionHex = None
         self.operands = None
 
-class EUnknownDisassemblyType(Exception):
-    pass
+#-----------------------------------------------------------------------
+md = None
+last_arch = None
+last_mode = None
+def Decode(offset, buf, arch, mode):
+    global md, last_arch, last_mode
+    do_continue = True
+    total = 0
+    while do_continue:
+        do_continue = False
+        if md == None or last_arch != arch or last_mode != mode:
+          md = Cs(arch, mode)
+          last_arch = arch
+          last_mode = mode
 
+        md.detail=False
+        ret = md.disasm(buf, offset)
+        last_addr = offset
+        last_size = 1
+        for x in ret:
+            if do_continue:
+                break
+            total += 1
+            if x == []:
+                x = CDisObj()
+                x.address = last_addr
+                x.size = 1
+                x.mnemonic = "db"
+
+                if last_addr != offset:
+                  curr_off = last_addr - offset
+                else:
+                  curr_off = offset
+                x.bytes = "00"
+                x.instruction = None
+                x.op_str = hexlify(buf[curr_off:curr_off+1])
+                x.ins_hex = x.op_str
+
+                buf = buf[curr_off+1:]
+                offset = last_addr+1
+                last_addr += 1
+                last_size = 1
+                do_continue = True
+                prev_was = True
+                yield x
+            else:
+                insn = x
+                last_addr = x.address + x.size
+                last_size = x.size
+                curr_off = last_addr - offset
+                yield x
+
+        if last_addr+15-offset < len(buf):
+            buf = buf[last_addr+last_size-offset:]
+            offset = last_addr+last_size
+            do_continue = True
+
+#-----------------------------------------------------------------------
+class EUnknownDisassemblyType(Exception): pass
+
+#-----------------------------------------------------------------------
 class CStrings:
     def __init__(self, buf=None):
         self.buf = buf
@@ -131,13 +160,14 @@ class CStrings:
         ret = scanner.findall(self.buf)
         return ret
 
+#-----------------------------------------------------------------------
 class COffsetString:
     
     def __init__(self):
         self.buf = None
         self.minsize = 3
         self.offset = 4
-    
+
     def searchForStringAt(self, i):
         initial = i
         ret = self.buf[i:i+1]
@@ -178,6 +208,7 @@ class COffsetString:
         
         return ret
 
+#-----------------------------------------------------------------------
 class CPyew:
 
     def __init__(self, plugins=True, batch=False):
@@ -199,7 +230,7 @@ class CPyew:
         self.filename = None
         self.processor="intel"
         self.f = None
-        self.type=32
+        self.mode=32
         self.lines=40
         self.bsize=512
         self.hexcolumns=16
@@ -263,11 +294,11 @@ class CPyew:
                 print
 
     def NextHead(self, offset):
-        obj = self.disasm(offset, self.processor, self.type, 1)
+        obj = self.disasm(offset, self.processor, self.mode, 1)
         return offset + obj[0].size
 
     def GetMnems(self, offset, num):
-        obj = self.disasm(offset, self.processor, self.type, num)
+        obj = self.disasm(offset, self.processor, self.mode, num)
         ret = []
         for x in obj:
             ret.append(str(x.mnemonic))
@@ -316,7 +347,6 @@ class CPyew:
                    and va < self.elf.secnames[x].sh_addr + self.elf.secnames[x].sh_size:
                     ret = True
                     break
-        
         return ret
 
     def getOffsetFromVirtualAddress(self, va):
@@ -365,9 +395,9 @@ class CPyew:
         for x in self.plugins:
             self.log(x.ljust(8), self.plugins[x].__doc__)
 
-    def loadFile(self, filename, mode="rb"):
+    def loadFile(self, filename, file_mode="rb"):
         self.filename = filename
-        self.mode = mode
+        self.file_mode = file_mode
         
         if self.filename.lower().startswith("http://") or \
            self.filename.lower().startswith("https://") or \
@@ -378,7 +408,7 @@ class CPyew:
             self.maxsize = len(tmp)
         else:
             self.physical = True
-            self.f = file(filename, mode)
+            self.f = file(filename, file_mode)
             self.maxsize = os.path.getsize(filename)
         
         self.seek(0)
@@ -421,7 +451,7 @@ class CPyew:
         old_deep_value = self.deepcodeanalysis
         self.deepcodeanalysis = True
         self.ep = 0
-        self.type = 16  
+        self.mode = 16  
         try:
             self.log("x86 Boot Sector")
             self.findFunctions("intel")
@@ -435,7 +465,7 @@ class CPyew:
         old_deep_value = self.deepcodeanalysis
         self.deepcodeanalysis = False
         self.ep = 0
-        self.type = 16
+        self.mode = 16
         try:
             self.log("BIOS file")
             self.printBiosInformation()
@@ -621,7 +651,7 @@ class CPyew:
     def createIntelFunctionsByPrologs(self):
         anal = self.getAnalysisObject()
         
-        if self.type == 32:
+        if self.mode == 32:
             prologs = ["8bff558b", "5589e5", "558bec"]
         else:
             prologs = ["40554883ec", "554889e5"]
@@ -642,6 +672,7 @@ class CPyew:
         anal = self.getAnalysisObject()
         anal.timeout = self.analysis_timeout
         anal.doCodeAnalysis()
+        
         if self.deepcodeanalysis:
             self.log("\b"*80 + "Searching typical function's prologs..." + " "*20)
             self.createIntelFunctionsByPrologs()
@@ -660,6 +691,16 @@ class CPyew:
                 self.log("Total time %f second(s)" % (time.time()-t))
 
     def loadElf(self):
+        EM_X86_64 = 62
+        EM_386 = 3
+        EM_MIPS	= 8
+        EM_MIPS_RS3_LE = 10
+        EM_ARM = 40
+        EM_AARCH64 = 183
+        
+        EF_MIPS_ARCH_64 = 0x60000000
+        EF_MIPS_ARCH_64R2 = 0x80000000
+
         if self.physical:
             self.elf = Elf(self.f)
         else:
@@ -672,15 +713,21 @@ class CPyew:
         
         self.virtual = True
         
-        if self.elf.e_machine == 62: # x86_64
-            self.type = 64
+        if self.elf.e_machine == EM_X86_64:
+            self.mode = 64
             self.processor = "intel"
-        elif self.elf.e_machine == 3: # x86
-            self.type = 32
+        elif self.elf.e_machine == EM_386:
+            self.mode = 32
             self.processor = "intel"
+        elif self.elf.e_machine == EM_MIPS:
+            self.mode = 32
+            if self.elf.e_flags & EF_MIPS_ARCH_64R2 or \
+               self.elf.e_flags & EF_MIPS_ARCH_64:
+              self.mode = 64
+            self.processor = "mips"
         else:
             self.log("Warning! Unsupported architecture, defaulting to Intel x86 (32 bits)")
-            self.type = 32
+            self.mode = 32
         
         for x in self.elf.secnames:
             if self.elf.e_entry >= self.elf.secnames[x].sh_addr and self.elf.e_entry < self.elf.secnames[x].sh_addr + self.elf.secnames[x].sh_size:
@@ -769,10 +816,10 @@ class CPyew:
             
             if self.pe.FILE_HEADER.Machine == 0x14C: # IMAGE_FILE_MACHINE_I386
                 self.processor="intel"
-                self.type = 32
+                self.mode = 32
             elif self.pe.FILE_HEADER.Machine == 0x8664: # IMAGE_FILE_MACHINE_AMD64
                 self.processor="intel"
-                self.type = 64
+                self.mode = 64
                 self.log("64 Bits binary")
             
             self.log("Sections:")
@@ -851,8 +898,7 @@ class CPyew:
                 last_regs[reg] = regs[reg]
         
         self.last_regs = last_regs
-        print
-        print self.disassemble(self.dbg.readMemory(addr, self.bsize), type=self.type, baseoffset=addr, lines=self.lines/2, marker=True)
+        print self.disassemble(self.dbg.readMemory(addr, self.bsize), mode=self.mode, baseoffset=addr, lines=self.lines/2, marker=True)
 
     def debugHandler(self, command):
         cmds = command.split(" ")
@@ -1000,53 +1046,34 @@ class CPyew:
             return None
 
     def getDisassembleObject(self, obj, idx=-1):
-        #print obj, type(obj), repr("".join(obj[2]).split(" "))
-        #raw_input("?")
-        if type(obj) is tuple:
-            ret = CDisObj()
-            ret.offset = obj[0]
-            ret.size = obj[1]
-            ret.mnemonic = str("".join(obj[2]))
-            
-            mnems = ret.mnemonic.split(" ")
-            ret.mnemonic = str(mnems[0])
-            if mnems[0].startswith("REP") or mnems[0] == "LOCK":
-              mnem_size = 2
-              ret.mnemonic += " " + mnems[1]
-            else:
-              mnem_size = 1
-            
-            data = obj[2].split(" ")
-            if len(data) > mnem_size:
-                operands = ""
-                for x in data[1:]:
-                    operands += x + " "
-            else:
-                operands = ""
-            
-            ret.operands = operands
-            ret.instructionHex = obj[3]
-            return ret
-        else:
-            ret = CDisObj()
-            ret.offset = obj.offset
-            ret.size = obj.size
-            ret.mnemonic = str(obj.mnemonic)
-            ret.operands = str(obj.operands)
-            ret.instructionHex = obj.instructionHex
-            return ret
+        ret = CDisObj()
+        ret.offset = obj.address
+        ret.size = obj.size
+        ret.mnemonic = str(obj.mnemonic)
+        ret.operands = str(obj.op_str)
+        ret.instructionHex = hexlify(obj.bytes)
+        ret.instruction = obj
+        return ret
 
-    def disasm(self, offset=0, processor="intel", mtype=32, lines=1, bsize=512):
+    def getArchFromProcessor(self, proc):
+      proc = proc.lower()
+      if proc == "intel":
+        return CS_ARCH_X86
+      elif proc == "arm":
+        return CS_ARCH_ARM
+      elif proc == "thumb":
+        return CS_ARCH_THUMB
+      elif proc == "mips":
+        return CS_ARCH_MIPS
+      elif proc == "mips64":
+        return CS_ARCH_MIPS64
+      else:
+        raise Exception("Unknown processor %s" % proc)
+        
+    def disasm(self, offset=0, processor="intel", mode=32, lines=1, bsize=512):
         if processor == "intel":
-            if mtype == 32:
-                decode = Decode32Bits
-            elif mtype == 16:
-                decode = Decode16Bits
-            elif mtype == 64:
-                decode = Decode64Bits
-            else:
-                raise EUnknownDisassemblyType()
-            
+            mode = self.getDecoder(processor, mode)
+
             ret = []
             self.calls = []
             i = None
@@ -1057,46 +1084,43 @@ class CPyew:
                 # OverflowError: long int too large to convert to int
                 return []
 
-            if has_pyms:
-              offset = self.ep
-
-            for i in Decode(offset, buf, decode):
-                if self.analysing:
-                    self.checkAnalysisTimeout()
-                i = self.getDisassembleObject(i, ilines)
-                ret.append(i)
-                ilines += 1
-                
+            last_insn = None
+            last_addr = offset
+            arch = self.getArchFromProcessor(processor)
+            for insn in Decode(offset, buf, arch, mode):
                 if ilines == lines:
+                    do_continue = False
                     break
 
+                i = self.getDisassembleObject(insn, ilines)
+                last_addr = i.offset
+                ret.append(i)
+                ilines += 1
+                last_insn = insn
             return ret
 
-    def getDecoder(self, processor, type):
-        if type == 32:
-            decode = Decode32Bits
-        elif type == 16:
-            decode = Decode16Bits
-        elif type == 64:
-            decode = Decode64Bits
+    def getDecoder(self, processor, mode):
+        if mode == 32:
+            return CS_MODE_32
+        elif mode == 16:
+            return CS_MODE_16
+        elif mode == 64:
+            return CS_MODE_64
         else:
             raise EUnknownDisassemblyType()
-        
-        return decode
 
-    def disassemble(self, buf, processor="intel", type=32, lines=40, bsize=512, baseoffset=0, marker=False):
+    def disassemble(self, buf, processor="intel", mode=32, lines=40, bsize=512, baseoffset=0, marker=False):
         """ Disassemble a given buffer using Distorm """
         if processor == "intel":
-            decode = self.getDecoder(processor, type)
+            decode = self.getDecoder(processor, mode)
             
-            pos = 0
+            pos = index = offset = 0
             ret = ""
-            index = 0
             self.calls = []
-            offset = 0
             i = None
-            
-            for i in Decode(baseoffset, buf, decode):
+
+            arch = self.getArchFromProcessor(processor)
+            for i in Decode(baseoffset, buf, arch, decode):
                 i = self.getDisassembleObject(i)
                 pos += 1
                 ops = str(i.operands)
@@ -1198,7 +1222,7 @@ class CPyew:
                                         data = data[:30] + "..."
                                     if data != "":
                                         comment = "\t; %s" % repr(data)
-                
+
                 if self.case == 'high':
                     ret += "0x%08x (%02x) %-22s %s%s" % (i.offset, i.size, i.instructionHex, str(i.mnemonic) + " " + str(ops), comment)
                 # if pyew.case is 'low' or wrong 
@@ -1225,7 +1249,7 @@ class CPyew:
             self.log(dis.dis(buf))
             self.seek(self.offset)
             ret = ""
-        
+
         return ret
 
     def strings(self, buf, doprint=True, offset=0):
@@ -1234,11 +1258,13 @@ class CPyew:
         
         hints = []
         
+        i = 0
         for x in ret:
             pos = buf.find(x)
             hints.append({pos+offset:x})
             if doprint:
-                self.log("HINT[0x%08x]: %s" % (pos, x))
+                self.log("HINT#%03d[0x%08x]: %s" % (i, pos, x))
+            i += 1
         
         return hints
 
@@ -1248,11 +1274,13 @@ class CPyew:
         
         hints = []
         
+        i = 0
         for x in ret:
             pos = buf.find(x)
             hints.append({pos+offset:x})
             if doprint:
-                self.log("HINT[0x%08x]: %s" % (pos, x))
+                self.log("HINT#%03d[0x%08x]: %s" % (i, pos, x))
+            i += 1
         
         return hints
 
@@ -1263,16 +1291,18 @@ class CPyew:
         strs.buf = buf
         l = strs.findall()
         if doprint:
+            i = 0
             for x in l:
                 pos = x[1]+offset
                 val = x[0]
-                self.log("HINT[0x%08x]: %s" % (pos, val))
+                self.log("HINT#%03d[0x%08x]: %s" % (i, pos, val))
+                i += 1
         return l
 
-    def dosearch(self, f, mtype, search, cols=32, doprint=True, offset=0):
-        if (search == None or search == "") and mtype not in ["s", "o"]:
+    def dosearch(self, f, mode, search, cols=32, doprint=True, offset=0):
+        if (search == None or search == "") and mode not in ["s", "o"]:
             return []
-
+        
         oldpos = f.tell()
         f.seek(0, 2)
         bigfile = False
@@ -1288,20 +1318,20 @@ class CPyew:
         hints = []
         
         if bigfile:
-            if mtype in ["s", "u", "o"] and search == "":
+            if mode in ["s", "u", "o"] and search == "":
                 print "Sorry, this search type is not supported for big files"
                 return []
-            elif mtype == "r":
+            elif mode == "r":
                 print "BUG: Regular expression searchs aren't supported for big files, sorry"
                 return []
         
-        if mtype == "s" and search=="":
+        if mode == "s" and search=="":
             hints = self.strings(buf, doprint, offset=offset)
-        elif mtype == "u" and search == "":
+        elif mode == "u" and search == "":
             hints = self.strings(buf, doprint, offset=offset)
-        elif mtype == "r":
+        elif mode == "r":
             hints = self.extract(buf, strre=search, doprint=doprint, offset=offset)
-        elif mtype == "o":
+        elif mode == "o":
             hints = self.extractoffsetstring(buf, doprint=doprint, offset=offset)
         else:
             try:
@@ -1311,32 +1341,30 @@ class CPyew:
                 
                 while 1:
                     self.calls = []
-                    cmd_type = mtype[0]
                     while 1:
-                        if cmd_type == "s":
+                        if mode == "s":
                             pos = buf.find(search)
-                        elif cmd_type == "i":
+                        elif mode == "i":
                             pos = buf.lower().find(search.lower())
-                        elif cmd_type == "x":
-                            search = search.strip(" ")
-                            pos = buf.find(unhexlify(search))
-                        elif cmd_type == "X":
-                            search = search.strip(" ")
+                        elif mode == "x":
+                            pos = buf.find(unhexlify(search.replace(" ", "")))
+                        elif mode == "X":
                             pos = buf.lower().find(unhexlify(search).lower())
-                        elif cmd_type == "u":
+                        elif mode == "u":
                             pos = buf.find(to_unicode(search))
-                        elif cmd_type == "U":
+                        elif mode == "U":
                             pos = buf.lower().find(to_unicode(search.lower()))
                         else:
-                            self.log("Unknown search type!")
+                            self.log("Unknown search mode!")
                             break
                         
                         if pos > -1:
+                            tmp_line = ""
                             if doprint:
                                 hexa = False
-                                if len(mtype) > 1:
+                                if len(mode) > 1:
                                     # Hexadecimal output?
-                                    hexa = mtype[1] == "h"
+                                    hexa = mode[1] == "h"
                                 
                                 # For non hexadecimal representations,
                                 # print an ASCII like representation.
@@ -1349,9 +1377,9 @@ class CPyew:
 
                                 tmp = moffset+pos+offset
                                 self.calls.append(tmp)
-                                self.log("HINT[0x%08x]: %s" % (tmp, s))
-
-                            hints.append({moffset+pos+offset:buf[pos:pos+cols]})
+                                tmp_line = "HINT#%03d[0x%08x]: %s" % (len(hints)+1, tmp, s)
+                                self.log(tmp_line)
+                            hints.append({moffset+pos+offset:[buf[pos:pos+cols], tmp_line]})
                             moffset += pos + len(search)
                             buf = buf[pos+len(search):]
                             
@@ -1359,7 +1387,7 @@ class CPyew:
                                 break
                         else:
                             break
-                    
+
                     if not bigfile:
                         break
                     elif f.tell() == filesize:

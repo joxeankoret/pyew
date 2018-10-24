@@ -5580,10 +5580,6 @@ ep_only=True
 signature=EB 0A 5B 56 50 72 6F 74 65 63 74 5D
 ep_only=True
 
-[Armadillo v1.71]
-signature=55 8B EC 6A FF 68 ?? ?? ?? ?? 68 ?? ?? ?? ?? 64 A1
-ep_only=True
-
 [ENIGMA Protector V1.1 -> Sukhov Vladimir - additional]
 signature=00 00 00 56 69 72 74 75 61 6C 41 6C 6C 6F 63 00 00 00 56 69 72 74 75 61 6C 46 72 65 65 00 00 00 47 65 74 4D 6F 64 75 6C 65 48 61 6E 64 6C 65 41 00 00 00 47 65 74 50 72 6F 63 41 64 64 72 65 73 73 00 00 00 45 78 69 74 50 72 6F 63 65 73 73 00 00 00 4C 6F 61
 ep_only=True

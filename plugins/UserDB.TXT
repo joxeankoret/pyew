@@ -10333,9 +10333,10 @@ ep_only=True
 signature=60 E8 01 00 00 00 55 83 C4 04 E8 01 00 00 00 90 5D 81 FF FF FF 00 01 E9
 ep_only=True
 
-[Armadillo v1.xx - v2.xx]
-signature=55 8B EC 53 8B 5D 08 56 8B 75 0C 57 8B 7D 10 85 F6
-ep_only=True
+; False positive - https://www.zscaler.com/blogs/research/your-windows-8-packed
+;[Armadillo v1.xx - v2.xx]
+;signature=55 8B EC 53 8B 5D 08 56 8B 75 0C 57 8B 7D 10 85 F6
+;ep_only=True
 
 [Microsoft CAB SFX]
 signature=E8 0A 00 00 00 E9 7A FF FF FF CC CC CC CC CC
@@ -18065,10 +18066,6 @@ ep_only=True
 signature=68 2C 11 40 00 E8 F0 FF FF FF 00 00 00 00 00 00 30 00 00 00 38 00 00 00 00 00 00 00 37 BB 71 EC A4 E1 98 4C 9B FE 8F 0F FA 6A 07 F6 00 00 00 00 00 00 01 00 00 00 20 20 46 6F 72 20 73 74 75 64 00 20 54 6F 00 00 00 00 06 00 00 00 CC 1A 40 00 07 00 00 00 D4
 ep_only=True
 
-[Armadillo v1.xx - v2.xx - additional]
-signature=55 8B EC 53 8B 5D 08 56 8B 75 0C 57 8B 7D 10 85 F6
-ep_only=True
-
 [PEMangle - additional]
 signature=60 9C BE 00 10 40 00 8B FE B9 28 03 00 00 BB 78 56 34 12 AD 33 C3 AB E2 FA 9D 61
 ep_only=True
@@ -24381,10 +24378,6 @@ ep_only=True
 
 [MaskPE V2.0 -> yzkzero - additional]
 signature=B8 18 00 00 00 64 8B 18 83 C3 30 C3 40 3E 0F B6 00 C1 E0 ?? 83 C0 ?? 36 01 04 24 C3
-ep_only=True
-
-[Armadillo v1.71 - additional]
-signature=55 8B EC 6A FF 68 ?? ?? ?? ?? 68 ?? ?? ?? ?? 64 A1
 ep_only=True
 
 [Petite 2.2 -> (c)1998-99 Ian Luck (h) - additional]
